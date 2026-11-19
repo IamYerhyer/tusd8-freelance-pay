@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tUSD8 Freelance Pay — escrowed freelance payments on QDay Aevum</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">t$8</div>
+    <div>
+      <h1>tUSD8 Freelance Pay</h1>
+      <p class="tagline">Freelance payment, escrowed by a smart contract. No trust required — the contract is the middleman.</p>
+    </div>
+  </div>
+  <div class="wallet-box">
+    <div id="balances" class="balances"></div>
+    <button id="connectBtn">Connect wallet</button>
+    <div id="accountLabel" class="account-label"></div>
+  </div>
+</header>
+
+<div id="banner" class="banner hidden"></div>
+
+<main>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Jobs</h2>
+      <div class="filters">
+        <button data-filter="all" class="filter active">All jobs</button>
+        <button data-filter="client" class="filter">Mine as client</button>
+        <button data-filter="freelancer" class="filter">Mine as freelancer</button>
+        <button id="refreshBtn" class="filter">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="jobList" class="job-list"><p class="muted">Loading jobs from Aevum testnet…</p></div>
+  </section>
+
+  <section class="panel">
+    <h2>Create a job</h2>
+    <form id="createForm">
+      <label>Job title
+        <input name="title" required maxlength="80" placeholder="Logo design">
+      </label>
+      <label>Description
+        <textarea name="description" rows="2" maxlength="300" placeholder="What should the freelancer deliver?"></textarea>
+      </label>
+      <label>Freelancer wallet address
+        <input name="freelancer" required placeholder="0x…" pattern="0x[0-9a-fA-F]{40}">
+      </label>
+      <div class="row">
+        <label>Amount (tUSD8)
+          <input name="amount" required type="number" min="0.000001" step="0.000001" placeholder="20">
+        </label>
+        <label>Deadline
+          <input name="deadline" required type="date">
+        </label>
+      </div>
+      <button type="submit" class="primary">Create job</button>
+      <p class="muted small">Creating a job costs only gas. The tUSD8 moves later, when you deposit.</p>
+    </form>
+  </section>
+
+  <section id="detailPanel" class="panel hidden">
+    <div class="panel-head">
+      <h2 id="detailTitle">Job detail</h2>
+      <button id="closeDetail" class="filter">✕ Close</button>
+    </div>
+    <div id="detailBody"></div>
+  </section>
+</main>
+
+<footer>
+  <p>QDay Aevum testnet (chain 44005) · Escrow contract
+    <a href="https://explorer-test.qday.info/address/0x07310bcba28550d429f1d7d779f47e049f468b0e" target="_blank" rel="noopener">0x07310bcb…68b0e</a> (verified) ·
+    tUSD8 <a href="https://explorer-test.qday.info/address/0x456569838f1d43009A91ebA4263147Afd7233483" target="_blank" rel="noopener">0x45656983…3483</a> ·
+    Testnet tokens only — no real value.</p>
+</footer>
+
+<div id="toast" class="toast hidden"></div>
+<script src="app.js"></script>
+</body>
+</html>
