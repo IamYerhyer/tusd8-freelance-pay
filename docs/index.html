@@ -42,6 +42,32 @@
   <section class="panel">
     <h2>Create a job</h2>
     <form id="createForm">
+      <label>Job type
+        <select name="category" id="categorySelect">
+          <option value="Design & creative">Design &amp; creative</option>
+          <option value="AI training & evaluation">AI training &amp; evaluation</option>
+          <option value="Development">Development</option>
+          <option value="Writing & content">Writing &amp; content</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
+      <div id="aiFields" class="hidden">
+        <div class="row">
+          <label>AI task type
+            <select name="aiTaskType">
+              <option value="Data labelling">Data labelling</option>
+              <option value="RLHF preference ranking">RLHF preference ranking</option>
+              <option value="Model evaluation">Model evaluation</option>
+              <option value="Dataset creation">Dataset creation</option>
+              <option value="Prompt engineering">Prompt engineering</option>
+            </select>
+          </label>
+          <label>Instructions link (optional)
+            <input name="aiInstructions" type="url" placeholder="https://… task guidelines">
+          </label>
+        </div>
+        <p class="muted small">The work itself happens wherever the freelancer does it — this platform is the payment &amp; trust layer. The deliverable (dataset, evaluation sheet, model output) is attached as proof on delivery.</p>
+      </div>
       <label>Job title
         <input name="title" required maxlength="80" placeholder="Logo design">
       </label>

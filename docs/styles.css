@@ -72,10 +72,16 @@ main { max-width: 1080px; margin: 0 auto; padding: 16px 22px 30px; display: grid
 .step.refunded { color: var(--danger); }
 form { display: grid; gap: 12px; }
 label { display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
-input, textarea {
+input, textarea, select {
   background: var(--bg); border: 1px solid var(--line); color: var(--text);
   border-radius: 10px; padding: 10px 12px; font-size: 14px; width: 100%;
 }
+.badge {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+  padding: 2px 8px; border-radius: 999px; vertical-align: middle;
+  background: #2a1f07; color: var(--accent); border: 1px solid var(--accent);
+}
+.badge.ai { background: #0a2e22; color: var(--accent-2); border-color: var(--accent-2); }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }

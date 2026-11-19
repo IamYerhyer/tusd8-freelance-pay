@@ -83,7 +83,7 @@ function renderList() {
   }
   el.innerHTML = mine.map(j => `
     <div class="job-card" data-id="${j.id}">
-      <h3>#${j.id} · ${escapeHtml(j.title)} — <span class="amount">${fmtAmt(j.amount)} tUSD8</span></h3>
+      <h3>#${j.id} · ${escapeHtml(j.title)}${categoryBadge(j.description)} — <span class="amount">${fmtAmt(j.amount)} tUSD8</span></h3>
       <div class="job-meta">
         <span>Client ${short(j.client)}</span><span>Freelancer ${short(j.freelancer)}</span>
         <span>Deadline ${fmtDate(j.deadline)}</span><span>State: ${STATES[j.state]}</span>
@@ -95,6 +95,18 @@ function renderList() {
 
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Jobs carry their category as the first line of the on-chain description
+// ("Category: …"), written by the create form. Older jobs have no line.
+function parseCategory(desc) {
+  const m = (desc || "").match(/^Category: (.+)$/m);
+  return m ? m[1].trim() : null;
+}
+function categoryBadge(desc) {
+  const c = parseCategory(desc);
+  if (!c) return "";
+  return ` <span class="badge ${c.startsWith("AI") ? "ai" : ""}">${escapeHtml(c)}</span>`;
 }
 
 // ---------- job detail ----------
@@ -132,7 +144,7 @@ function renderDetail() {
   const isClient = same(j.client, account), isFreelancer = same(j.freelancer, account);
   const role = isClient ? "You are the client on this job." : isFreelancer ? "You are the freelancer on this job."
     : account ? "You are not a party to this job — actions are disabled." : "Connect a wallet to act on this job.";
-  $("#detailTitle").textContent = `Job #${j.id} — ${j.title}`;
+  $("#detailTitle").innerHTML = `Job #${j.id} — ${escapeHtml(j.title)}${categoryBadge(j.description)}`;
   let actions = "";
   if (j.state === 0 && isFreelancer) actions += `<button class="primary" id="actAccept">Accept job</button>`;
   if (j.state === 1 && isClient) actions += `<button class="primary" id="actDeposit">Deposit ${fmtAmt(j.amount)} tUSD8</button>`;
@@ -251,14 +263,29 @@ document.querySelectorAll(".filter[data-filter]").forEach(b => b.addEventListene
   filter = b.dataset.filter;
   renderList();
 }));
+$("#categorySelect").addEventListener("change", (e) => {
+  $("#aiFields").classList.toggle("hidden", e.target.value !== "AI training & evaluation");
+});
 $("#createForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!signer) return toast("Connect your wallet first — creating a job is a transaction.");
   const f = new FormData(e.target);
   const deadline = Math.floor(new Date(f.get("deadline") + "T23:59:59").getTime() / 1000);
   const amount = ethers.parseUnits(String(f.get("amount")), 6);
-  await runTx(() => escrowWrite.createAgreement(f.get("freelancer"), amount, deadline, f.get("title"), f.get("description") || ""));
+  // Compose the on-chain description: category line first (the UI reads it
+  // back for badges), AI template lines when relevant, then the free text.
+  const lines = [`Category: ${f.get("category")}`];
+  if (f.get("category") === "AI training & evaluation") {
+    lines.push(`AI task type: ${f.get("aiTaskType")}`);
+    const instr = String(f.get("aiInstructions") || "").trim();
+    if (instr) lines.push(`Instructions: ${instr}`);
+  }
+  const free = String(f.get("description") || "").trim();
+  if (free) lines.push("", free);
+  const description = lines.join("\n");
+  await runTx(() => escrowWrite.createAgreement(f.get("freelancer"), amount, deadline, f.get("title"), description));
   e.target.reset();
+  $("#aiFields").classList.add("hidden");
 });
 if (window.ethereum) window.ethereum.on("accountsChanged", () => location.reload());
 loadJobs().catch(() => { $("#jobList").innerHTML = '<p class="muted">Could not reach the Aevum RPC — try Refresh in a moment.</p>'; });
