@@ -7,6 +7,11 @@ without delivering.
 Built for the **Aevum Builder Challenge #1** on QDay: one working payment flow
 with **tUSD8** on the **QDay Aevum testnet** (chain ID 44005).
 
+**Live demo: https://iamyerhyer.github.io/tusd8-freelance-pay/** — browse all
+jobs read-only, or connect a wallet on the Aevum testnet to act: the UI shows
+each wallet only its own actions for each job state, and explains on-screen
+why a refund is locked whenever the guard blocks one.
+
 ## The flow
 
 1. **Client creates a job** — title, description, amount in tUSD8, deadline,
@@ -89,8 +94,9 @@ terms rejected · deposit without token approval fails.
 
 ## Roadmap inside this challenge
 
-- [x] Escrow contract + tests, deployed on Aevum testnet
-- [ ] Front end: job list, create job, job detail with state-aware actions
+- [x] Escrow contract + tests, deployed on Aevum testnet, source verified
+- [x] Front end: job list, create job, job detail with state-aware actions
+      (live at the demo link above)
 - [ ] Payout options (after release): convert to other stablecoins, withdraw
       as crypto, or withdraw to local currency at a transparent quoted rate
       (bank settlement via a licensed partner in production; labelled as a
