@@ -14,9 +14,18 @@ why a refund is locked whenever the guard blocks one.
 
 ## The flow
 
+Jobs come in two kinds:
+
+- **Open jobs** — posted to the board with no freelancer assigned. Any
+  qualified freelancer can **claim** one; the first claim takes it. Claiming
+  is not a guarantee of work: the client funds only a claimer they accept,
+  and until deposit either side can walk away. The funding decision is the
+  qualification gate.
+- **Direct hire** — created for one specific freelancer's wallet, as in V1.
+
 1. **Client creates a job** — title, description, amount in tUSD8, deadline,
-   and the freelancer's wallet address.
-2. **Freelancer accepts** the agreement.
+   and either a freelancer address (direct hire) or open posting.
+2. **Freelancer accepts** the agreement — or **claims** an open job.
 3. **Client deposits** the tUSD8 into the escrow contract. Funds are locked,
    visible to both sides.
 4. **Freelancer delivers** — marks the job complete and attaches a deliverable
@@ -48,14 +57,24 @@ next step.
 
 | Contract | Address |
 |---|---|
-| FreelanceEscrow | `0x07310bcba28550d429f1d7d779f47e049f468b0e` |
+| FreelanceEscrowV2 (current — open job board) | `0x98ad3d72e7a92246606f91c078f5746758635b9f` |
+| FreelanceEscrow (V1 — direct hire only) | `0x07310bcba28550d429f1d7d779f47e049f468b0e` |
 | tUSD8 (official, QDay Aevum) | `0x456569838f1d43009A91ebA4263147Afd7233483` |
 
 - Network: QDay Aevum testnet, chain ID `44005`
 - RPC: `https://rpc-test.qday.info`
-- Explorer: https://explorer-test.qday.info/address/0x07310bcba28550d429f1d7d779f47e049f468b0e
-- Deploy tx: `0x9ece21c6ef28a27db8cb2ce71523120419dd467383984a590ca8ec9e746d4b56`
-- Source: **verified** on the explorer (contract name `FreelanceEscrow`)
+- Explorer: https://explorer-test.qday.info/address/0x98ad3d72e7a92246606f91c078f5746758635b9f
+- V2 deploy tx: `0xdb06b55b88e3553d2d7cf3341d66c2a0fd3b9a9989c53a7f94d66389b1b6ae04` · V1 deploy tx: `0x9ece21c6ef28a27db8cb2ce71523120419dd467383984a590ca8ec9e746d4b56`
+- Source: **verified** on the explorer for both versions
+
+## Live open-job run on V2 (20 Nov 2026)
+
+V2's first job was itself an open job: the client posted *"Label 500 product
+images"* (AI training & evaluation, 5 tUSD8) with no freelancer assigned, a
+freelancer **claimed** it (`0xdd6d34b172eed0b85f14f1af88f9a82750930fd344acc0b609f6a1fdab009ba2`),
+the client funded it, the freelancer delivered, and release paid the full
+5 tUSD8 (`0x840ab3f62e1339efeb9f005f923709fc0f153eb76dfe3c9223f5c1f296614aad`).
+Two more open jobs sit on the board now, waiting for claimers.
 
 ## Live end-to-end run (18 Nov 2026)
 
@@ -82,7 +101,7 @@ Foundry project (Solidity 0.8.20):
 
 ```bash
 forge build
-forge test   # 11 tests covering the full spec checklist
+forge test   # 19 tests: the full V1 spec checklist + V2 claim flow
 ```
 
 Test coverage: happy path end-to-end · cancel before funding · funded refund
@@ -97,6 +116,8 @@ terms rejected · deposit without token approval fails.
 - [x] Escrow contract + tests, deployed on Aevum testnet, source verified
 - [x] Front end: job list, create job, job detail with state-aware actions
       (live at the demo link above)
+- [x] V2 open job board: anyone can post a job, qualified freelancers claim
+      (19/19 tests, deployed + verified, live claim run completed)
 - [ ] Payout options (after release): convert to other stablecoins, withdraw
       as crypto, or withdraw to local currency at a transparent quoted rate
       (bank settlement via a licensed partner in production; labelled as a
