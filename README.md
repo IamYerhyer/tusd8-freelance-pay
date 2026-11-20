@@ -1,20 +1,38 @@
 # tUSD8 Freelance Pay
 
-A mini freelance marketplace where payment is escrowed in a smart contract —
-the client can't run off without paying, and the freelancer can't get paid
-without delivering.
+A remote-work board in Web3 settings — Mercor / Micro1 / Microworkers style,
+paid in **tUSD8**: clients post jobs with a pay-per-spot and a limited number
+of spots and fund the full budget into a smart contract up front, so every
+spot on the board is real, paid-for work. Freelancers apply, the client
+approves the qualified ones, they deliver, and the contract pays them. First
+come, first served — spots are scarce by design.
 
 Built for the **Aevum Builder Challenge #1** on QDay: one working payment flow
 with **tUSD8** on the **QDay Aevum testnet** (chain ID 44005).
 
-**Live demo: https://iamyerhyer.github.io/tusd8-freelance-pay/** — browse all
-jobs read-only, or connect a wallet on the Aevum testnet to act: the UI shows
-each wallet only its own actions for each job state, and explains on-screen
-why a refund is locked whenever the guard blocks one.
+**Live demo: https://iamyerhyer.github.io/tusd8-freelance-pay/** — browse the
+board read-only, or connect a wallet on the Aevum testnet to post, apply,
+approve, deliver and get paid. The UI shows each wallet only its own actions,
+and explains on-screen why a refund is locked whenever the guard blocks one.
 
-## The flow
+## The flow (current — JobBoard, V3)
 
-Jobs come in two kinds:
+1. **Client posts a job** — title, requirements, pay per spot, number of
+   spots, deadline — and the **full budget (pay × spots) is escrowed up
+   front**. A spot on this board is guaranteed money, not a promise.
+2. **Freelancers apply** — one application per wallet per job.
+3. **Client approves the qualified** — approval allocates a spot. When the
+   spots are gone, they're gone: first come, first approved.
+4. **Approved freelancers deliver** with a proof link/hash attached.
+5. **Client releases** each spot's pay individually from the pool.
+6. **Guards:** an approved-but-undelivered spot can be reclaimed only after
+   the deadline; a delivered spot only after the deadline **and** a 3-day
+   review window. After deadline + review window the client closes the
+   posting and the unspent budget returns to them.
+
+## Earlier versions (V1/V2 — the escrow this grew from)
+
+Jobs came in two kinds:
 
 - **Open jobs** — posted to the board with no freelancer assigned. Any
   qualified freelancer can **claim** one; the first claim takes it. Claiming
@@ -57,15 +75,27 @@ next step.
 
 | Contract | Address |
 |---|---|
-| FreelanceEscrowV2 (current — open job board) | `0x98ad3d72e7a92246606f91c078f5746758635b9f` |
+| JobBoard (V3 — current, funded postings + spots) | `0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b` |
+| FreelanceEscrowV2 (open job board) | `0x98ad3d72e7a92246606f91c078f5746758635b9f` |
 | FreelanceEscrow (V1 — direct hire only) | `0x07310bcba28550d429f1d7d779f47e049f468b0e` |
 | tUSD8 (official, QDay Aevum) | `0x456569838f1d43009A91ebA4263147Afd7233483` |
 
 - Network: QDay Aevum testnet, chain ID `44005`
 - RPC: `https://rpc-test.qday.info`
-- Explorer: https://explorer-test.qday.info/address/0x98ad3d72e7a92246606f91c078f5746758635b9f
-- V2 deploy tx: `0xdb06b55b88e3553d2d7cf3341d66c2a0fd3b9a9989c53a7f94d66389b1b6ae04` · V1 deploy tx: `0x9ece21c6ef28a27db8cb2ce71523120419dd467383984a590ca8ec9e746d4b56`
-- Source: **verified** on the explorer for both versions
+- Explorer: https://explorer-test.qday.info/address/0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b
+- Deploy txs — V3: `0x562a4693fe3ab3e3d2dbcd919ba235e1de7d1b111265b4ac733bb9b642bf670a` · V2: `0xdb06b55b88e3553d2d7cf3341d66c2a0fd3b9a9989c53a7f94d66389b1b6ae04` · V1: `0x9ece21c6ef28a27db8cb2ce71523120419dd467383984a590ca8ec9e746d4b56`
+- Source: **verified** on the explorer for all three versions
+
+## Live board run (20 Nov 2026)
+
+The board launched with two funded postings — *"Label 1,000 product images"*
+(3 spots × 1 tUSD8) and *"Evaluate model responses (batch)"* (2 spots ×
+1 tUSD8) — and immediately ran a full spot cycle: apply
+(`0x9d074ec6f6e6ef31b319b5342f66a17b8b773292af6008982769741a29ece743`) →
+approve (`0x35c1f5872f385d4e29d1870892bfed68c24305148acdc841edde43cb461c1808`) →
+deliver (`0x6f1f464a3536f67faa026f54aa842b9ce19ee952cc0971ceed4510c123c19c10`) →
+release (`0x44938e033fa45c1de5198e56e85d50e85f430d712a56f02de00562457264fe43`).
+Four spots remain open across the two postings.
 
 ## Live open-job run on V2 (20 Nov 2026)
 
@@ -101,7 +131,7 @@ Foundry project (Solidity 0.8.20):
 
 ```bash
 forge build
-forge test   # 19 tests: the full V1 spec checklist + V2 claim flow
+forge test   # 30 tests: V1 spec checklist + V2 claim flow + V3 board flow
 ```
 
 Test coverage: happy path end-to-end · cancel before funding · funded refund
@@ -118,6 +148,9 @@ terms rejected · deposit without token approval fails.
       (live at the demo link above)
 - [x] V2 open job board: anyone can post a job, qualified freelancers claim
       (19/19 tests, deployed + verified, live claim run completed)
+- [x] V3 remote-work board: funded postings, limited spots, applications +
+      qualification approvals, per-spot escrow (30/30 tests total, deployed +
+      verified, live spot cycle completed, board seeded with open spots)
 - [ ] Payout options (after release): convert to other stablecoins, withdraw
       as crypto, or withdraw to local currency at a transparent quoted rate
       (bank settlement via a licensed partner in production; labelled as a

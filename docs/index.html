@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>tUSD8 Freelance Pay — escrowed freelance payments on QDay Aevum</title>
+<title>tUSD8 Freelance Pay — remote work board, paid in tUSD8 on QDay Aevum</title>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 </head>
@@ -13,7 +13,7 @@
     <div class="logo">t$8</div>
     <div>
       <h1>tUSD8 Freelance Pay</h1>
-      <p class="tagline">Freelance payment, escrowed by a smart contract. No trust required — the contract is the middleman.</p>
+      <p class="tagline">A remote-work board in Web3: funded jobs with limited spots, paid in tUSD8. Clients fund the full budget up front — freelancers apply, the qualified get approved, deliver, and get paid from escrow. First come, first served.</p>
     </div>
   </div>
   <div class="wallet-box">
@@ -28,30 +28,30 @@
 <main>
   <section class="panel">
     <div class="panel-head">
-      <h2>Jobs</h2>
+      <h2>Job board</h2>
       <div class="filters">
         <button data-filter="all" class="filter active">All jobs</button>
-        <button data-filter="client" class="filter">Mine as client</button>
-        <button data-filter="freelancer" class="filter">Mine as freelancer</button>
+        <button data-filter="posted" class="filter">Posted by me</button>
+        <button data-filter="mine" class="filter">My applications</button>
         <button id="refreshBtn" class="filter">↻ Refresh</button>
       </div>
     </div>
-    <div id="jobList" class="job-list"><p class="muted">Loading jobs from Aevum testnet…</p></div>
+    <div id="jobList" class="job-list"><p class="muted">Loading the board from Aevum testnet…</p></div>
   </section>
 
   <section class="panel">
-    <h2>Create a job</h2>
+    <h2>Post a job</h2>
     <form id="createForm">
       <label>Job type
         <select name="category" id="categorySelect">
-          <option value="Design & creative">Design &amp; creative</option>
           <option value="AI training & evaluation">AI training &amp; evaluation</option>
+          <option value="Design & creative">Design &amp; creative</option>
           <option value="Development">Development</option>
           <option value="Writing & content">Writing &amp; content</option>
           <option value="Other">Other</option>
         </select>
       </label>
-      <div id="aiFields" class="hidden">
+      <div id="aiFields">
         <div class="row">
           <label>AI task type
             <select name="aiTaskType">
@@ -66,34 +66,26 @@
             <input name="aiInstructions" type="url" placeholder="https://… task guidelines">
           </label>
         </div>
-        <p class="muted small">The work itself happens wherever the freelancer does it — this platform is the payment &amp; trust layer. The deliverable (dataset, evaluation sheet, model output) is attached as proof on delivery.</p>
       </div>
       <label>Job title
-        <input name="title" required maxlength="80" placeholder="Logo design">
+        <input name="title" required maxlength="80" placeholder="Label 1,000 product images">
       </label>
-      <label>Description
-        <textarea name="description" rows="2" maxlength="300" placeholder="What should the freelancer deliver?"></textarea>
+      <label>Requirements &amp; description
+        <textarea name="description" rows="3" maxlength="600" placeholder="Who qualifies, what exactly to deliver, quality bar…"></textarea>
       </label>
-      <label>Assignment
-        <select name="assignment" id="assignmentSelect">
-          <option value="open">Open job — any qualified freelancer can claim it</option>
-          <option value="direct">Direct hire — a specific freelancer</option>
-        </select>
-      </label>
-      <label id="freelancerField" class="hidden">Freelancer wallet address
-        <input name="freelancer" placeholder="0x…" pattern="0x[0-9a-fA-F]{40}">
-      </label>
-      <p class="muted small" id="openNote">Open jobs appear on the board for anyone to claim. Claiming isn't a guarantee — you fund only the claimer you accept, and either side can walk away before deposit.</p>
       <div class="row">
-        <label>Amount (tUSD8)
-          <input name="amount" required type="number" min="0.000001" step="0.000001" placeholder="20">
+        <label>Pay per spot (tUSD8)
+          <input name="amount" required type="number" min="0.000001" step="0.000001" placeholder="1">
         </label>
-        <label>Deadline
-          <input name="deadline" required type="date">
+        <label>Spots available
+          <input name="spots" required type="number" min="1" step="1" placeholder="10">
         </label>
       </div>
-      <button type="submit" class="primary">Create job</button>
-      <p class="muted small">Creating a job costs only gas. The tUSD8 moves later, when you deposit.</p>
+      <label>Deadline
+        <input name="deadline" required type="date">
+      </label>
+      <p class="muted small" id="totalNote">Posting funds the full budget (pay × spots) into escrow up front — that's what makes every spot on this board real. Unspent budget returns after the deadline.</p>
+      <button type="submit" class="primary">Approve &amp; post job</button>
     </form>
   </section>
 
@@ -107,9 +99,11 @@
 </main>
 
 <footer>
-  <p>QDay Aevum testnet (chain 44005) · Escrow contract (V2, open job board)
-    <a href="https://explorer-test.qday.info/address/0x98ad3d72e7a92246606f91c078f5746758635b9f" target="_blank" rel="noopener">0x98ad3d72…5b9f</a> (verified) ·
+  <p>QDay Aevum testnet (chain 44005) · JobBoard contract
+    <a href="https://explorer-test.qday.info/address/0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b" target="_blank" rel="noopener">0x37c8e35f…9c6b</a> (verified) ·
     tUSD8 <a href="https://explorer-test.qday.info/address/0x456569838f1d43009A91ebA4263147Afd7233483" target="_blank" rel="noopener">0x45656983…3483</a> ·
+    Earlier versions: <a href="https://explorer-test.qday.info/address/0x98ad3d72e7a92246606f91c078f5746758635b9f" target="_blank" rel="noopener">V2</a> ·
+    <a href="https://explorer-test.qday.info/address/0x07310bcba28550d429f1d7d779f47e049f468b0e" target="_blank" rel="noopener">V1</a> ·
     Testnet tokens only — no real value.</p>
 </footer>
 
