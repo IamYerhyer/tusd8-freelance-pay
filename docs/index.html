@@ -1,32 +1,65 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>tUSD8 Freelance Pay — remote work board, paid in tUSD8 on QDay Aevum</title>
+<script>
+  // Apply the saved theme before first paint (no flash).
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem("tfp-theme"); } catch (e) {}
+    var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 </head>
 <body>
-<header>
-  <div class="brand">
-    <div class="logo">t$8</div>
-    <div>
-      <h1>tUSD8 Freelance Pay</h1>
-      <p class="tagline">A remote-work board in Web3: funded jobs with limited spots, paid in tUSD8. Clients fund the full budget up front — freelancers apply, the qualified get approved, deliver, and get paid from escrow. First come, first served.</p>
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="logo">t$8</div>
+      <span class="nav-name">tUSD8 Freelance Pay</span>
+    </div>
+    <div class="nav-links">
+      <a href="#board">Job board</a>
+      <a href="#post">Post a job</a>
+      <a href="https://github.com/IamYerhyer/tusd8-freelance-pay" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <div class="nav-actions">
+      <button id="themeToggle" class="theme-toggle" aria-label="Switch colour theme">☀️ Light</button>
+      <div class="wallet-box">
+        <div id="balances" class="balances"></div>
+        <button id="connectBtn" class="ghost">Connect wallet</button>
+        <div id="accountLabel" class="account-label"></div>
+      </div>
     </div>
   </div>
-  <div class="wallet-box">
-    <div id="balances" class="balances"></div>
-    <button id="connectBtn">Connect wallet</button>
-    <div id="accountLabel" class="account-label"></div>
+</nav>
+
+<header class="hero">
+  <div class="hero-glow"></div>
+  <div class="pill">● Live on QDay Aevum testnet · chain 44005</div>
+  <h1>Remote work,<br>paid in tUSD8.</h1>
+  <p class="hero-sub">A remote-work board in Web3 settings — Mercor and Microworkers style, on-chain. Clients fund the full budget up front; qualified freelancers rush to secure limited spots, deliver, and get paid from escrow.</p>
+  <div class="hero-cta">
+    <a class="btn-primary" href="#board">Browse open jobs</a>
+    <a class="btn-ghost" href="#post">Post a job</a>
+  </div>
+  <p class="hero-note">First come, first served · Escrow-secured spots · Testnet tokens only — no real value</p>
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="statJobs">–</div><div class="stat-label">Jobs posted</div></div>
+    <div class="stat"><div class="stat-num" id="statSpots">–</div><div class="stat-label">Spots funded</div></div>
+    <div class="stat"><div class="stat-num" id="statPaid">–</div><div class="stat-label">tUSD8 paid out</div></div>
   </div>
 </header>
 
 <div id="banner" class="banner hidden"></div>
 
 <main>
-  <section class="panel">
+  <section class="panel" id="board">
     <div class="panel-head">
       <h2>Job board</h2>
       <div class="filters">
@@ -39,7 +72,7 @@
     <div id="jobList" class="job-list"><p class="muted">Loading the board from Aevum testnet…</p></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="post">
     <h2>Post a job</h2>
     <form id="createForm">
       <label>Job type
@@ -108,6 +141,23 @@
 </footer>
 
 <div id="toast" class="toast hidden"></div>
+<script>
+  // Dark / light toggle — persisted, respects the pre-paint choice above.
+  (function () {
+    var btn = document.getElementById("themeToggle");
+    function paint() {
+      var dark = document.documentElement.getAttribute("data-theme") !== "light";
+      btn.textContent = dark ? "☀️ Light" : "🌙 Dark";
+    }
+    btn.addEventListener("click", function () {
+      var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("tfp-theme", next); } catch (e) {}
+      paint();
+    });
+    paint();
+  })();
+</script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -90,8 +90,19 @@ async function loadAll() {
       state: Number(a.state), proof: a.proof, appliedAt: a.appliedAt, deliveredAt: a.deliveredAt });
   }
   postings.reverse();
+  renderStats();
   renderList();
   if (selectedId !== null) renderDetail();
+}
+
+function renderStats() {
+  const jobs = postings.length;
+  const spots = postings.reduce((s, p) => s + Number(p.spotsTotal), 0);
+  const paid = postings.reduce((s, p) => s + Number(p.releasedCount) * (Number(p.amountPerSpot) / 1e6), 0);
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set("#statJobs", jobs);
+  set("#statSpots", spots);
+  set("#statPaid", paid.toLocaleString(undefined, { maximumFractionDigits: 6 }));
 }
 
 function myAssignments() {
