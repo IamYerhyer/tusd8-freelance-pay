@@ -30,6 +30,25 @@ and explains on-screen why a refund is locked whenever the guard blocks one.
    review window. After deadline + review window the client closes the
    posting and the unspent budget returns to them.
 
+## Payout layer (getting earnings out)
+
+The board's **Payouts** section covers the final step of the payment flow,
+with each route labelled for exactly what it is:
+
+- **Withdraw as crypto — REAL.** A plain tUSD8 transfer from the earner's
+  wallet to any external Aevum wallet address. Settles on-chain immediately.
+- **Convert to another token — UNAVAILABLE, on purpose.** No swap route
+  exists on the Aevum testnet: Q-Swap, QDay's DEX, currently runs on QDay
+  Origin mainnet only and is announced to follow on Aevum (official QDay
+  Wiki, FAQ §2.11). The UI shows the option as unavailable with that
+  explanation rather than faking a swap.
+- **Withdraw to local currency — QUOTE + REQUEST.** A transparent quote at
+  a live FX rate (tUSD8 treated 1:1 with USD, stated on screen): gross, the
+  **1% fee on its own line**, and the exact net amount, all shown before
+  confirming. Confirming records a payout request (bank details + reference)
+  labelled **SIMULATED** — actual bank settlement is a licensed-partner
+  production step and is never presented as a real bank credit on testnet.
+
 ## Earlier versions (V1/V2 — the escrow this grew from)
 
 Jobs came in two kinds:
@@ -151,6 +170,9 @@ terms rejected · deposit without token approval fails.
 - [x] V3 remote-work board: funded postings, limited spots, applications +
       qualification approvals, per-spot escrow (30/30 tests total, deployed +
       verified, live spot cycle completed, board seeded with open spots)
+- [x] Payout layer: real crypto withdrawal; live-FX local-currency quote
+      with the 1% fee itemised and requests recorded as labelled simulations;
+      conversion honestly marked unavailable (no Aevum swap route exists)
 - [ ] Payout options (after release): convert to other stablecoins, withdraw
       as crypto, or withdraw to local currency at a transparent quoted rate
       (bank settlement via a licensed partner in production; labelled as a

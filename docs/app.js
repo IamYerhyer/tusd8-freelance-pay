@@ -25,7 +25,8 @@ const BOARD_ABI = [
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)"
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function transfer(address to, uint256 amount) returns (bool)"
 ];
 const A_STATES = ["Applied", "Approved", "Delivered", "Released", "Rejected", "Refunded"];
 
@@ -347,3 +348,89 @@ $("#createForm").addEventListener("submit", async (e) => {
 });
 if (window.ethereum) window.ethereum.on("accountsChanged", () => location.reload());
 loadAll().catch(() => { $("#jobList").innerHTML = '<p class="muted">Could not reach the Aevum RPC — try Refresh in a moment.</p>'; });
+
+// ---------- payouts ----------
+// B) Crypto withdrawal: a plain ERC-20 transfer from the connected wallet —
+//    fully real on testnet.
+$("#wdBtn").addEventListener("click", async () => {
+  if (!signer) return toast("Connect your wallet first.");
+  const to = $("#wdAddress").value.trim();
+  const amt = $("#wdAmount").value;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(to)) return toast("Enter a valid destination wallet address.");
+  if (!amt || Number(amt) <= 0) return toast("Enter an amount to withdraw.");
+  await runTx(() => tokenWrite.transfer(to, ethers.parseUnits(String(amt), 6)));
+});
+
+// C) Local-currency payout: live FX quote (tUSD8 treated 1:1 with USD, stated
+//    on screen), 1% fee on its own line, exact net before confirming. The
+//    request is recorded locally; bank settlement is a licensed-partner
+//    production step, so the record is labelled SIMULATED.
+let fxRates = null, fxRateTime = null;
+async function loadFxRates() {
+  try {
+    const r = await fetch("https://open.er-api.com/v6/latest/USD");
+    const j = await r.json();
+    if (j && j.rates) { fxRates = j.rates; fxRateTime = j.time_last_update_utc || ""; }
+  } catch (e) { fxRates = null; }
+  renderFxQuote();
+}
+const fxFmt = (n, cur) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + cur;
+function currentQuote() {
+  const amt = Number($("#fxAmount").value);
+  const cur = $("#fxCurrency").value;
+  if (!amt || amt <= 0 || !fxRates || !fxRates[cur]) return null;
+  const rate = fxRates[cur];
+  const gross = amt * rate;
+  const fee = gross * 0.01;
+  return { amt, cur, rate, gross, fee, net: gross - fee };
+}
+function renderFxQuote() {
+  const box = $("#fxQuote");
+  const q = currentQuote();
+  if (!$("#fxAmount").value) { box.innerHTML = "Enter an amount to see the live quote."; return; }
+  if (!fxRates) { box.innerHTML = "Live rate unavailable right now — check your connection and try again. No quote, no request: we never guess a rate."; return; }
+  if (!q) { box.innerHTML = "Enter a valid amount."; return; }
+  box.innerHTML = `
+    <div><span>Rate (live, 1 tUSD8 = 1 USD)</span><b>1 USD = ${q.rate.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${q.cur}</b></div>
+    <div><span>Amount</span><span>${q.amt} tUSD8 → ${fxFmt(q.gross, q.cur)}</span></div>
+    <div><span>Fee (1%)</span><span>− ${fxFmt(q.fee, q.cur)}</span></div>
+    <div class="net"><span>You would receive</span><span>${fxFmt(q.net, q.cur)}</span></div>
+    <div><span class="small muted">Rate source: open.er-api.com${fxRateTime ? " · updated " + escapeHtml(fxRateTime) : ""}. Exact net shown before you confirm — no hidden charges.</span></div>`;
+}
+["#fxAmount", "#fxCurrency"].forEach(s => { $(s).addEventListener("input", renderFxQuote); $(s).addEventListener("change", renderFxQuote); });
+
+function fxRequests() {
+  try { return JSON.parse(localStorage.getItem("tfp-payout-requests") || "[]"); } catch (e) { return []; }
+}
+function renderFxRequests() {
+  const list = fxRequests();
+  const el = $("#fxRequests");
+  if (!list.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `<h3 class="sub">Your payout requests</h3>` + list.map(r => `
+    <div class="fx-req">
+      <div><b>${escapeHtml(r.ref)}</b> · ${r.amount} tUSD8 → <b>${escapeHtml(r.net)}</b> · ${escapeHtml(r.bank)} ····${escapeHtml(r.accountLast4)} (${escapeHtml(r.name)})</div>
+      <div><span class="sim">SIMULATED</span> <span class="muted">· recorded ${escapeHtml(r.when)} · bank settlement is a production step</span></div>
+    </div>`).join("");
+}
+$("#fxBtn").addEventListener("click", () => {
+  const q = currentQuote();
+  if (!q) return toast("Enter an amount and wait for the live quote first.");
+  const bank = $("#fxBank").value.trim();
+  const acct = $("#fxAccount").value.trim();
+  const name = $("#fxName").value.trim();
+  if (!bank || !acct || !name) return toast("Fill in the bank name, account number and account name.");
+  if (!account) return toast("Connect your wallet first so the request is tied to the wallet that earned the tUSD8.");
+  const ref = "TFP-" + Date.now().toString(36).toUpperCase();
+  const req = {
+    ref, amount: q.amt, currency: q.cur, net: fxFmt(q.net, q.cur),
+    bank, accountLast4: acct.slice(-4), name,
+    from: account, when: new Date().toLocaleString()
+  };
+  const list = fxRequests();
+  list.unshift(req);
+  try { localStorage.setItem("tfp-payout-requests", JSON.stringify(list.slice(0, 20))); } catch (e) {}
+  renderFxRequests();
+  toast(`Payout request <b>${ref}</b> recorded — ${fxFmt(q.net, q.cur)} to ${escapeHtml(bank)}. Labelled SIMULATED: on testnet no bank credit occurs; settlement is the licensed-partner production step.`, 10000);
+});
+loadFxRates();
+renderFxRequests();

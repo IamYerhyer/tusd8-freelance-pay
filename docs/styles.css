@@ -193,6 +193,26 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .spots-fill { height: 100%; background: linear-gradient(90deg, var(--accent-deep), var(--accent)); }
 .spots .full { color: var(--danger); }
 
+/* ---------- payouts ---------- */
+.pay-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; margin-top: 16px; }
+.pay-card {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 20px;
+  padding: 22px; display: grid; gap: 12px; align-content: start;
+}
+.pay-card h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.pay-card p { margin: 0; }
+.fx-quote {
+  background: var(--bg); border: 1px dashed var(--line); border-radius: 12px;
+  padding: 12px 14px; font-size: 14px; display: grid; gap: 4px;
+}
+.fx-quote div { display: flex; justify-content: space-between; gap: 10px; }
+.fx-quote .net { color: var(--text); font-weight: 700; font-size: 15px; border-top: 1px solid var(--line); padding-top: 6px; margin-top: 2px; }
+.fx-req {
+  margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel-2); font-size: 14px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.fx-req .sim { color: var(--warn-text); font-weight: 700; }
+
 .toast {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 30;
   background: var(--panel-2); border: 1px solid var(--accent); color: var(--text);
