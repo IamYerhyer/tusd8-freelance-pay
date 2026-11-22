@@ -9,8 +9,8 @@
   (function () {
     var saved = null;
     try { saved = localStorage.getItem("tfp-theme"); } catch (e) {}
-    var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-    document.documentElement.setAttribute("data-theme", theme);
+    // CloudPeak is a dark design: dark is the default; a saved choice wins.
+    document.documentElement.setAttribute("data-theme", saved || "dark");
   })();
 </script>
 <link rel="stylesheet" href="styles.css">
