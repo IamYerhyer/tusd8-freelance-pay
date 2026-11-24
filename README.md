@@ -1,7 +1,6 @@
 # tUSD8 Freelance Pay
 
-A remote-work board in Web3 settings — Mercor / Micro1 / Microworkers style,
-paid in **tUSD8**: clients post jobs with a pay-per-spot and a limited number
+A remote-work board in Web3 settings, paid in **tUSD8**: clients post jobs with a pay-per-spot and a limited number
 of spots and fund the full budget into a smart contract up front, so every
 spot on the board is real, paid-for work. Freelancers apply, the client
 approves the qualified ones, they deliver, and the contract pays them. First
