@@ -214,6 +214,7 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .fx-req .sim { color: var(--warn-text); font-weight: 700; }
 
 .nav-links a.active { color: var(--accent); font-weight: 600; }
+#board { scroll-margin-top: 96px; }
 .hero.compact { padding: 64px 22px 40px; }
 .hero.compact h1 { font-size: 44px; }
 .subfilters { margin: 2px 0 4px; padding-left: 2px; }

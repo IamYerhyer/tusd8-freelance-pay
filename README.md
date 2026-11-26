@@ -13,6 +13,9 @@ with **tUSD8** on the **QDay Aevum testnet** (chain ID 44005).
 board read-only, or connect a wallet on the Aevum testnet to post, apply,
 approve, deliver and get paid. The UI shows each wallet only its own actions,
 and explains on-screen why a refund is locked whenever the guard blocks one.
+The front end is three pages: the **Job board** (index), **Post a job**
+(`post.html`) and **Payouts** (`payouts.html`), sharing one wallet session,
+theme and script.
 
 ## The flow (current — JobBoard, V3)
 
@@ -31,7 +34,7 @@ and explains on-screen why a refund is locked whenever the guard blocks one.
 
 ## Payout layer (getting earnings out)
 
-The board's **Payouts** section covers the final step of the payment flow,
+The **Payouts** page covers the final step of the payment flow,
 with each route labelled for exactly what it is:
 
 - **Withdraw as crypto — REAL.** A plain tUSD8 transfer from the earner's
