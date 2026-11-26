@@ -75,6 +75,7 @@ function spotsBar(p) {
 
 // ---------- data ----------
 async function loadAll() {
+  if (!$("#jobList")) return; // board data only exists on the board page
   const pc = Number(await boardRead.postingCount());
   const ac = Number(await boardRead.assignmentCount());
   postings = [];
@@ -136,12 +137,13 @@ function myAppRow(a) {
 
 function renderList() {
   const el = $("#jobList");
+  if (!el) return;
   const sub = $("#myAppsFilters");
   if (filter === "mine") {
     // "My applications" is a sub-tab view inside the board: the status
     // sub-tabs (All / Approved / Rejected / Pending / Paid) appear under the
     // main filters and the list shows application rows, not job cards.
-    sub.classList.remove("hidden");
+    if (sub) sub.classList.remove("hidden");
     const mine = myAssignments().slice().reverse(); // newest first
     document.querySelectorAll("#myAppsFilters [data-mfilter]").forEach(b => {
       const key = b.dataset.mfilter;
@@ -169,7 +171,7 @@ function renderList() {
     el.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => openDetail(Number(b.dataset.open))));
     return;
   }
-  sub.classList.add("hidden");
+  if (sub) sub.classList.add("hidden");
   let list = postings;
   if (filter === "posted") list = postings.filter(p => same(p.client, account));
   if (!list.length) {
@@ -213,6 +215,7 @@ function openDetail(id) {
 }
 
 function renderDetail() {
+  if (!$("#detailBody")) return;
   const p = postings.find(x => x.id === selectedId);
   if (!p) return;
   const nowSec = Math.floor(Date.now() / 1000);
@@ -303,24 +306,27 @@ async function confirmTx(hash, tries = 45) {
 }
 
 async function runTx(fn) {
-  if (!signer) return toast("Connect your wallet first.");
+  if (!signer) { toast("Connect your wallet first."); return "nowallet"; }
   let tx;
   try {
     toast("Waiting for confirmation in your wallet…");
     tx = await fn();
   } catch (e) {
-    if (e.code === 4001 || e.code === "ACTION_REJECTED") return toast("Cancelled in your wallet — nothing was submitted.");
-    return toast("Transaction failed: " + (e.shortMessage || e.message || e), 9000);
+    if (e.code === 4001 || e.code === "ACTION_REJECTED") { toast("Cancelled in your wallet — nothing was submitted."); return "cancelled"; }
+    toast("Transaction failed: " + (e.shortMessage || e.message || e), 9000);
+    return "failed";
   }
   // From here the transaction IS submitted. Never call it "failed" again:
   // only a mined receipt with status 0 means it truly didn't take effect.
   toast(`Submitted — confirming on-chain… <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">${short(tx.hash)}</a>`);
   const receipt = await confirmTx(tx.hash);
   if (receipt && receipt.status === 0) {
-    return toast(`⚠️ The transaction landed on-chain but reverted, so it had no effect: <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">${short(tx.hash)}</a>`, 10000);
+    toast(`⚠️ The transaction landed on-chain but reverted, so it had no effect: <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">${short(tx.hash)}</a>`, 10000);
+    return "reverted";
   }
   if (!receipt) {
-    return toast(`⏳ Still confirming — your transaction is submitted and most likely fine. Check <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">the explorer</a> or tap Refresh in a moment. Please don't submit it again.`, 12000);
+    toast(`⏳ Still confirming — your transaction is submitted and most likely fine. Check <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">the explorer</a> or tap Refresh in a moment. Please don't submit it again.`, 12000);
+    return "pending";
   }
   txToast(tx.hash);
   try {
@@ -329,6 +335,7 @@ async function runTx(fn) {
   } catch (e) {
     toast(`✅ Confirmed on-chain: <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">${short(tx.hash)}</a> — the page refresh hit a snag, tap ↻ Refresh to see it.`, 9000);
   }
+  return "confirmed";
 }
 
 // ---------- wallet ----------
@@ -378,9 +385,11 @@ async function connect() {
 }
 
 // ---------- wiring ----------
+// The front end is three pages sharing this script (board / post / payouts),
+// so every block is wired only when its elements exist on the current page.
 $("#connectBtn").addEventListener("click", connect);
-$("#refreshBtn").addEventListener("click", loadAll);
-$("#closeDetail").addEventListener("click", () => { selectedId = null; $("#detailPanel").classList.add("hidden"); });
+if ($("#refreshBtn")) $("#refreshBtn").addEventListener("click", loadAll);
+if ($("#closeDetail")) $("#closeDetail").addEventListener("click", () => { selectedId = null; $("#detailPanel").classList.add("hidden"); });
 document.querySelectorAll(".filter[data-filter]").forEach(b => b.addEventListener("click", () => {
   document.querySelectorAll(".filter[data-filter]").forEach(x => x.classList.remove("active"));
   b.classList.add("active");
@@ -391,12 +400,17 @@ document.querySelectorAll("#myAppsFilters [data-mfilter]").forEach(b => b.addEve
   myFilter = b.dataset.mfilter;
   renderList();
 }));
-$("#navMyApps").addEventListener("click", () => {
+function activateMine() {
   document.querySelectorAll(".filter[data-filter]").forEach(x => x.classList.toggle("active", x.dataset.filter === "mine"));
   filter = "mine";
   renderList();
-});
-$("#categorySelect").addEventListener("change", (e) => {
+  const board = $("#board");
+  if (board) board.scrollIntoView({ behavior: "smooth" });
+}
+// On the board page the nav link switches the view in place; on the other
+// pages it is a plain link to index.html#myapps, handled at load below.
+if ($("#navMyApps") && $("#jobList")) $("#navMyApps").addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", "#myapps"); activateMine(); });
+if ($("#categorySelect")) $("#categorySelect").addEventListener("change", (e) => {
   $("#aiFields").classList.toggle("hidden", e.target.value !== "AI training & evaluation");
 });
 function updateTotal() {
@@ -406,8 +420,8 @@ function updateTotal() {
     ? `Total budget to fund up front: ${(per * spots).toLocaleString(undefined, { maximumFractionDigits: 6 })} tUSD8 (${spots} spots × ${per} tUSD8). Unspent budget returns after the deadline.`
     : "Posting funds the full budget (pay × spots) into escrow up front — that's what makes every spot on this board real. Unspent budget returns after the deadline.";
 }
-$("#createForm").addEventListener("input", updateTotal);
-$("#createForm").addEventListener("submit", async (e) => {
+if ($("#createForm")) $("#createForm").addEventListener("input", updateTotal);
+if ($("#createForm")) $("#createForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!signer) return toast("Connect your wallet first — posting a job is a transaction.");
   const f = new FormData(e.target);
@@ -440,17 +454,23 @@ $("#createForm").addEventListener("submit", async (e) => {
     txToast(atx.hash);
   }
   toast("Step 2 of 2: posting the job and funding its spots…");
-  await runTx(() => boardWrite.createPosting(perSpot, spots, deadline, f.get("title"), description));
+  const status = await runTx(() => boardWrite.createPosting(perSpot, spots, deadline, f.get("title"), description));
   e.target.reset();
   updateTotal();
+  if (status === "confirmed" && !$("#jobList")) {
+    toast("✅ Job posted and funded — taking you to the board to see it live…", 4000);
+    setTimeout(() => { location.href = "index.html"; }, 1500);
+  }
 });
 if (window.ethereum) window.ethereum.on("accountsChanged", () => location.reload());
-loadAll().catch(() => { $("#jobList").innerHTML = '<p class="muted">Could not reach the Aevum RPC — try Refresh in a moment.</p>'; });
+loadAll()
+  .then(() => { if ($("#jobList") && location.hash === "#myapps") activateMine(); })
+  .catch(() => { const el = $("#jobList"); if (el) el.innerHTML = '<p class="muted">Could not reach the Aevum RPC — try Refresh in a moment.</p>'; });
 
 // ---------- payouts ----------
 // B) Crypto withdrawal: a plain ERC-20 transfer from the connected wallet —
 //    fully real on testnet.
-$("#wdBtn").addEventListener("click", async () => {
+if ($("#wdBtn")) $("#wdBtn").addEventListener("click", async () => {
   if (!signer) return toast("Connect your wallet first.");
   const to = $("#wdAddress").value.trim();
   const amt = $("#wdAmount").value;
@@ -484,6 +504,7 @@ function currentQuote() {
 }
 function renderFxQuote() {
   const box = $("#fxQuote");
+  if (!box) return;
   const q = currentQuote();
   if (!$("#fxAmount").value) { box.innerHTML = "Enter an amount to see the live quote."; return; }
   if (!fxRates) { box.innerHTML = "Live rate unavailable right now — check your connection and try again. No quote, no request: we never guess a rate."; return; }
@@ -495,7 +516,7 @@ function renderFxQuote() {
     <div class="net"><span>You would receive</span><span>${fxFmt(q.net, q.cur)}</span></div>
     <div><span class="small muted">Rate source: open.er-api.com${fxRateTime ? " · updated " + escapeHtml(fxRateTime) : ""}. Exact net shown before you confirm — no hidden charges.</span></div>`;
 }
-["#fxAmount", "#fxCurrency"].forEach(s => { $(s).addEventListener("input", renderFxQuote); $(s).addEventListener("change", renderFxQuote); });
+["#fxAmount", "#fxCurrency"].forEach(s => { const el = $(s); if (el) { el.addEventListener("input", renderFxQuote); el.addEventListener("change", renderFxQuote); } });
 
 function fxRequests() {
   try { return JSON.parse(localStorage.getItem("tfp-payout-requests") || "[]"); } catch (e) { return []; }
@@ -503,6 +524,7 @@ function fxRequests() {
 function renderFxRequests() {
   const list = fxRequests();
   const el = $("#fxRequests");
+  if (!el) return;
   if (!list.length) { el.innerHTML = ""; return; }
   el.innerHTML = `<h3 class="sub">Your payout requests</h3>` + list.map(r => `
     <div class="fx-req">
@@ -510,7 +532,7 @@ function renderFxRequests() {
       <div><span class="sim">SIMULATED</span> <span class="muted">· recorded ${escapeHtml(r.when)} · bank settlement is a production step</span></div>
     </div>`).join("");
 }
-$("#fxBtn").addEventListener("click", () => {
+if ($("#fxBtn")) $("#fxBtn").addEventListener("click", () => {
   const q = currentQuote();
   if (!q) return toast("Enter an amount and wait for the live quote first.");
   const bank = $("#fxBank").value.trim();

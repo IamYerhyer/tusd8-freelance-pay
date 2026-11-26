@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payouts — tUSD8 Freelance Pay, paid in tUSD8 on QDay Aevum</title>
+<script>
+  // Apply the saved theme before first paint (no flash).
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem("tfp-theme"); } catch (e) {}
+    // CloudPeak is a dark design: dark is the default; a saved choice wins.
+    document.documentElement.setAttribute("data-theme", saved || "dark");
+  })();
+</script>
+<link rel="stylesheet" href="styles.css?v=pages1">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="logo">t$8</div>
+      <span class="nav-name">tUSD8 Freelance Pay</span>
+    </div>
+    <div class="nav-links">
+      <a href="index.html">Job board</a>
+      <a href="index.html#myapps" id="navMyApps">My applications</a>
+      <a href="post.html">Post a job</a>
+      <a href="payouts.html" class="active">Payouts</a>
+      <a href="https://github.com/IamYerhyer/tusd8-freelance-pay" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <div class="nav-actions">
+      <button id="themeToggle" class="theme-toggle" aria-label="Switch colour theme">☀️ Light</button>
+      <div class="wallet-box">
+        <div id="balances" class="balances"></div>
+        <button id="connectBtn" class="ghost">Connect wallet</button>
+        <div id="accountLabel" class="account-label"></div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<header class="hero compact">
+  <div class="hero-glow"></div>
+  <div class="pill">● Live on QDay Aevum testnet · chain 44005</div>
+  <h1>Payouts</h1>
+  <p class="hero-sub">Earned tUSD8 sitting in your wallet? Three ways out — each labelled honestly: what's fully real on testnet, and what is a quoted request whose bank settlement is a production step.</p>
+</header>
+
+<div id="banner" class="banner hidden"></div>
+
+<main>
+  <section class="panel" id="payouts">
+    <h2>Payouts — getting your tUSD8 out</h2>
+    <div class="pay-grid">
+      <div class="pay-card">
+        <h3>Withdraw as crypto <span class="badge ai">REAL</span></h3>
+        <p class="muted small">Send your tUSD8 to any external wallet address on Aevum. This is a real on-chain transfer, settled immediately.</p>
+        <label>Destination wallet address
+          <input id="wdAddress" placeholder="0x…" pattern="0x[0-9a-fA-F]{40}">
+        </label>
+        <label>Amount (tUSD8)
+          <input id="wdAmount" type="number" min="0.000001" step="0.000001" placeholder="1">
+        </label>
+        <button class="primary" id="wdBtn">Withdraw tUSD8</button>
+      </div>
+
+      <div class="pay-card">
+        <h3>Convert to another token <span class="badge">UNAVAILABLE</span></h3>
+        <p class="muted small">Swap tUSD8 for another stablecoin or token.</p>
+        <label>Target token
+          <select id="cvTarget" disabled>
+            <option>USDT</option><option>USDC</option><option>WQDAY</option><option>WABEL</option>
+          </select>
+        </label>
+        <label>Amount (tUSD8)
+          <input id="cvAmount" type="number" placeholder="1" disabled>
+        </label>
+        <button disabled>Convert</button>
+        <p class="guard-note">No swap route exists on the Aevum testnet yet: Q-Swap, QDay's DEX, currently runs on QDay Origin mainnet only (per the official QDay Wiki) and is announced to follow on Aevum. Rather than fake a swap, conversion stays off until a real route ships.</p>
+      </div>
+
+      <div class="pay-card">
+        <h3>Withdraw to local currency <span class="badge">QUOTE + REQUEST</span></h3>
+        <p class="muted small">Get a transparent quote at the live rate, see the fee before you commit, and record a payout request. Bank settlement itself is a licensed-partner production step — on testnet the request is recorded as a <b>simulation</b>, never shown as a real bank credit.</p>
+        <div class="row">
+          <label>Amount (tUSD8)
+            <input id="fxAmount" type="number" min="0.000001" step="0.000001" placeholder="10">
+          </label>
+          <label>Currency
+            <select id="fxCurrency">
+              <option value="NGN" selected>NGN — Nigerian naira</option>
+              <option value="GHS">GHS — Ghanaian cedi</option>
+              <option value="KES">KES — Kenyan shilling</option>
+              <option value="ZAR">ZAR — South African rand</option>
+            </select>
+          </label>
+        </div>
+        <label>Bank name
+          <input id="fxBank" placeholder="e.g. Zenith Bank">
+        </label>
+        <div class="row">
+          <label>Account number
+            <input id="fxAccount" inputmode="numeric" placeholder="0123456789">
+          </label>
+          <label>Account name
+            <input id="fxName" placeholder="Full name on the account">
+          </label>
+        </div>
+        <div id="fxQuote" class="fx-quote muted">Enter an amount to see the live quote.</div>
+        <button class="primary" id="fxBtn">Confirm payout request</button>
+      </div>
+    </div>
+    <div id="fxRequests"></div>
+  </section>
+</main>
+
+<footer>
+  <p>QDay Aevum testnet (chain 44005) · JobBoard contract
+    <a href="https://explorer-test.qday.info/address/0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b" target="_blank" rel="noopener">0x37c8e35f…9c6b</a> (verified) ·
+    tUSD8 <a href="https://explorer-test.qday.info/address/0x456569838f1d43009A91ebA4263147Afd7233483" target="_blank" rel="noopener">0x45656983…3483</a> ·
+    Testnet tokens only — no real value.</p>
+</footer>
+
+<div id="toast" class="toast hidden"></div>
+<script>
+  // Dark / light toggle — persisted, respects the pre-paint choice above.
+  (function () {
+    var btn = document.getElementById("themeToggle");
+    function paint() {
+      var dark = document.documentElement.getAttribute("data-theme") !== "light";
+      btn.textContent = dark ? "☀️ Light" : "🌙 Dark";
+    }
+    btn.addEventListener("click", function () {
+      var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("tfp-theme", next); } catch (e) {}
+      paint();
+    });
+    paint();
+  })();
+</script>
+<script src="app.js?v=pages1"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>tUSD8 Freelance Pay — remote work board, paid in tUSD8 on QDay Aevum</title>
+<title>Job board — tUSD8 Freelance Pay, paid in tUSD8 on QDay Aevum</title>
 <script>
   // Apply the saved theme before first paint (no flash).
   (function () {
@@ -13,7 +13,7 @@
     document.documentElement.setAttribute("data-theme", saved || "dark");
   })();
 </script>
-<link rel="stylesheet" href="styles.css?v=subtabs1">
+<link rel="stylesheet" href="styles.css?v=pages1">
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 </head>
 <body>
@@ -24,10 +24,10 @@
       <span class="nav-name">tUSD8 Freelance Pay</span>
     </div>
     <div class="nav-links">
-      <a href="#board">Job board</a>
-      <a href="#board" id="navMyApps">My applications</a>
-      <a href="#post">Post a job</a>
-      <a href="#payouts">Payouts</a>
+      <a href="index.html" class="active">Job board</a>
+      <a href="index.html#myapps" id="navMyApps">My applications</a>
+      <a href="post.html">Post a job</a>
+      <a href="payouts.html">Payouts</a>
       <a href="https://github.com/IamYerhyer/tusd8-freelance-pay" target="_blank" rel="noopener">GitHub</a>
     </div>
     <div class="nav-actions">
@@ -48,7 +48,7 @@
   <p class="hero-sub">A remote-work board in Web3 settings. Clients fund the full budget up front; qualified freelancers rush to secure limited spots, deliver, and get paid from escrow in tUSD8.</p>
   <div class="hero-cta">
     <a class="btn-primary" href="#board">Browse open jobs</a>
-    <a class="btn-ghost" href="#post">Post a job</a>
+    <a class="btn-ghost" href="post.html">Post a job</a>
   </div>
   <p class="hero-note">First come, first served · Escrow-secured spots · Testnet tokens only — no real value</p>
   <div class="stats">
@@ -79,121 +79,6 @@
       <button data-mfilter="paid" class="filter">Paid</button>
     </div>
     <div id="jobList" class="job-list"><p class="muted">Loading the board from Aevum testnet…</p></div>
-  </section>
-
-  <section class="panel" id="post">
-    <h2>Post a job</h2>
-    <form id="createForm">
-      <label>Job type
-        <select name="category" id="categorySelect">
-          <option value="AI training & evaluation">AI training &amp; evaluation</option>
-          <option value="Design & creative">Design &amp; creative</option>
-          <option value="Development">Development</option>
-          <option value="Writing & content">Writing &amp; content</option>
-          <option value="Other">Other</option>
-        </select>
-      </label>
-      <div id="aiFields">
-        <div class="row">
-          <label>AI task type
-            <select name="aiTaskType">
-              <option value="Data labelling">Data labelling</option>
-              <option value="RLHF preference ranking">RLHF preference ranking</option>
-              <option value="Model evaluation">Model evaluation</option>
-              <option value="Dataset creation">Dataset creation</option>
-              <option value="Prompt engineering">Prompt engineering</option>
-            </select>
-          </label>
-          <label>Instructions link (optional)
-            <input name="aiInstructions" type="url" placeholder="https://… task guidelines">
-          </label>
-        </div>
-      </div>
-      <label>Job title
-        <input name="title" required maxlength="80" placeholder="Label 1,000 product images">
-      </label>
-      <label>Requirements &amp; description
-        <textarea name="description" rows="3" maxlength="600" placeholder="Who qualifies, what exactly to deliver, quality bar…"></textarea>
-      </label>
-      <div class="row">
-        <label>Pay per spot (tUSD8)
-          <input name="amount" required type="number" min="0.000001" step="0.000001" placeholder="1">
-        </label>
-        <label>Spots available
-          <input name="spots" required type="number" min="1" step="1" placeholder="10">
-        </label>
-      </div>
-      <label>Deadline
-        <input name="deadline" required type="date">
-      </label>
-      <p class="muted small" id="totalNote">Posting funds the full budget (pay × spots) into escrow up front — that's what makes every spot on this board real. Unspent budget returns after the deadline.</p>
-      <button type="submit" class="primary">Approve &amp; post job</button>
-    </form>
-  </section>
-
-  <section class="panel" id="payouts">
-    <h2>Payouts — getting your tUSD8 out</h2>
-    <p class="muted">Earned tUSD8 sitting in your wallet? Three ways out. Each one is labelled honestly: what's fully real on testnet, and what is a quoted request whose bank settlement is a production step.</p>
-    <div class="pay-grid">
-      <div class="pay-card">
-        <h3>Withdraw as crypto <span class="badge ai">REAL</span></h3>
-        <p class="muted small">Send your tUSD8 to any external wallet address on Aevum. This is a real on-chain transfer, settled immediately.</p>
-        <label>Destination wallet address
-          <input id="wdAddress" placeholder="0x…" pattern="0x[0-9a-fA-F]{40}">
-        </label>
-        <label>Amount (tUSD8)
-          <input id="wdAmount" type="number" min="0.000001" step="0.000001" placeholder="1">
-        </label>
-        <button class="primary" id="wdBtn">Withdraw tUSD8</button>
-      </div>
-
-      <div class="pay-card">
-        <h3>Convert to another token <span class="badge">UNAVAILABLE</span></h3>
-        <p class="muted small">Swap tUSD8 for another stablecoin or token.</p>
-        <label>Target token
-          <select id="cvTarget" disabled>
-            <option>USDT</option><option>USDC</option><option>WQDAY</option><option>WABEL</option>
-          </select>
-        </label>
-        <label>Amount (tUSD8)
-          <input id="cvAmount" type="number" placeholder="1" disabled>
-        </label>
-        <button disabled>Convert</button>
-        <p class="guard-note">No swap route exists on the Aevum testnet yet: Q-Swap, QDay's DEX, currently runs on QDay Origin mainnet only (per the official QDay Wiki) and is announced to follow on Aevum. Rather than fake a swap, conversion stays off until a real route ships.</p>
-      </div>
-
-      <div class="pay-card">
-        <h3>Withdraw to local currency <span class="badge">QUOTE + REQUEST</span></h3>
-        <p class="muted small">Get a transparent quote at the live rate, see the fee before you commit, and record a payout request. Bank settlement itself is a licensed-partner production step — on testnet the request is recorded as a <b>simulation</b>, never shown as a real bank credit.</p>
-        <div class="row">
-          <label>Amount (tUSD8)
-            <input id="fxAmount" type="number" min="0.000001" step="0.000001" placeholder="10">
-          </label>
-          <label>Currency
-            <select id="fxCurrency">
-              <option value="NGN" selected>NGN — Nigerian naira</option>
-              <option value="GHS">GHS — Ghanaian cedi</option>
-              <option value="KES">KES — Kenyan shilling</option>
-              <option value="ZAR">ZAR — South African rand</option>
-            </select>
-          </label>
-        </div>
-        <label>Bank name
-          <input id="fxBank" placeholder="e.g. Zenith Bank">
-        </label>
-        <div class="row">
-          <label>Account number
-            <input id="fxAccount" inputmode="numeric" placeholder="0123456789">
-          </label>
-          <label>Account name
-            <input id="fxName" placeholder="Full name on the account">
-          </label>
-        </div>
-        <div id="fxQuote" class="fx-quote muted">Enter an amount to see the live quote.</div>
-        <button class="primary" id="fxBtn">Confirm payout request</button>
-      </div>
-    </div>
-    <div id="fxRequests"></div>
   </section>
 
   <section id="detailPanel" class="panel hidden">
@@ -232,6 +117,6 @@
     paint();
   })();
 </script>
-<script src="app.js?v=txfix1"></script>
+<script src="app.js?v=pages1"></script>
 </body>
 </html>

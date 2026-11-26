@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post a job — tUSD8 Freelance Pay, paid in tUSD8 on QDay Aevum</title>
+<script>
+  // Apply the saved theme before first paint (no flash).
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem("tfp-theme"); } catch (e) {}
+    // CloudPeak is a dark design: dark is the default; a saved choice wins.
+    document.documentElement.setAttribute("data-theme", saved || "dark");
+  })();
+</script>
+<link rel="stylesheet" href="styles.css?v=pages1">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="logo">t$8</div>
+      <span class="nav-name">tUSD8 Freelance Pay</span>
+    </div>
+    <div class="nav-links">
+      <a href="index.html">Job board</a>
+      <a href="index.html#myapps" id="navMyApps">My applications</a>
+      <a href="post.html" class="active">Post a job</a>
+      <a href="payouts.html">Payouts</a>
+      <a href="https://github.com/IamYerhyer/tusd8-freelance-pay" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <div class="nav-actions">
+      <button id="themeToggle" class="theme-toggle" aria-label="Switch colour theme">☀️ Light</button>
+      <div class="wallet-box">
+        <div id="balances" class="balances"></div>
+        <button id="connectBtn" class="ghost">Connect wallet</button>
+        <div id="accountLabel" class="account-label"></div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<header class="hero compact">
+  <div class="hero-glow"></div>
+  <div class="pill">● Live on QDay Aevum testnet · chain 44005</div>
+  <h1>Post a job</h1>
+  <p class="hero-sub">Fund the full budget into escrow up front — that's what makes every spot on the board real. Qualified freelancers apply, you approve the ones you want, and each delivery releases its spot's pay.</p>
+</header>
+
+<div id="banner" class="banner hidden"></div>
+
+<main>
+  <section class="panel" id="post">
+    <h2>Post a job</h2>
+    <form id="createForm">
+      <label>Job type
+        <select name="category" id="categorySelect">
+          <option value="AI training & evaluation">AI training &amp; evaluation</option>
+          <option value="Design & creative">Design &amp; creative</option>
+          <option value="Development">Development</option>
+          <option value="Writing & content">Writing &amp; content</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
+      <div id="aiFields">
+        <div class="row">
+          <label>AI task type
+            <select name="aiTaskType">
+              <option value="Data labelling">Data labelling</option>
+              <option value="RLHF preference ranking">RLHF preference ranking</option>
+              <option value="Model evaluation">Model evaluation</option>
+              <option value="Dataset creation">Dataset creation</option>
+              <option value="Prompt engineering">Prompt engineering</option>
+            </select>
+          </label>
+          <label>Instructions link (optional)
+            <input name="aiInstructions" type="url" placeholder="https://… task guidelines">
+          </label>
+        </div>
+      </div>
+      <label>Job title
+        <input name="title" required maxlength="80" placeholder="Label 1,000 product images">
+      </label>
+      <label>Requirements &amp; description
+        <textarea name="description" rows="3" maxlength="600" placeholder="Who qualifies, what exactly to deliver, quality bar…"></textarea>
+      </label>
+      <div class="row">
+        <label>Pay per spot (tUSD8)
+          <input name="amount" required type="number" min="0.000001" step="0.000001" placeholder="1">
+        </label>
+        <label>Spots available
+          <input name="spots" required type="number" min="1" step="1" placeholder="10">
+        </label>
+      </div>
+      <label>Deadline
+        <input name="deadline" required type="date">
+      </label>
+      <p class="muted small" id="totalNote">Posting funds the full budget (pay × spots) into escrow up front — that's what makes every spot on this board real. Unspent budget returns after the deadline.</p>
+      <button type="submit" class="primary">Approve &amp; post job</button>
+      <p class="muted small">Once posted, your job appears on the <a href="index.html">Job board</a> for freelancers to apply.</p>
+    </form>
+  </section>
+</main>
+
+<footer>
+  <p>QDay Aevum testnet (chain 44005) · JobBoard contract
+    <a href="https://explorer-test.qday.info/address/0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b" target="_blank" rel="noopener">0x37c8e35f…9c6b</a> (verified) ·
+    tUSD8 <a href="https://explorer-test.qday.info/address/0x456569838f1d43009A91ebA4263147Afd7233483" target="_blank" rel="noopener">0x45656983…3483</a> ·
+    Testnet tokens only — no real value.</p>
+</footer>
+
+<div id="toast" class="toast hidden"></div>
+<script>
+  // Dark / light toggle — persisted, respects the pre-paint choice above.
+  (function () {
+    var btn = document.getElementById("themeToggle");
+    function paint() {
+      var dark = document.documentElement.getAttribute("data-theme") !== "light";
+      btn.textContent = dark ? "☀️ Light" : "🌙 Dark";
+    }
+    btn.addEventListener("click", function () {
+      var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("tfp-theme", next); } catch (e) {}
+      paint();
+    });
+    paint();
+  })();
+</script>
+<script src="app.js?v=pages1"></script>
+</body>
+</html>
