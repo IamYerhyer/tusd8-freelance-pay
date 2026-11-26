@@ -93,7 +93,6 @@ async function loadAll() {
   postings.reverse();
   renderStats();
   renderList();
-  renderMyApps();
   if (selectedId !== null) renderDetail();
 }
 
@@ -111,14 +110,68 @@ function myAssignments() {
   return assignments.filter(a => same(a.freelancer, account));
 }
 
+const MY_FILTER_STATES = { all: null, pending: [0], approved: [1, 2], paid: [3], rejected: [4] };
+const MY_HINTS = {
+  0: "Waiting for the client's decision.",
+  1: "You hold a funded spot — open the job to deliver your work.",
+  2: "Delivered — waiting for the client to release your pay.",
+  3: "Paid out to your wallet. ✅",
+  4: "Not approved this time.",
+  5: "This spot was refunded to the client under the guard rules."
+};
+
+function myAppRow(a) {
+  const p = postings.find(x => x.id === a.postingId);
+  if (!p) return "";
+  return `<div class="myapp-row">
+    <div class="myapp-main">
+      <div><b>${escapeHtml(p.title)}</b>${categoryBadge(p.description)} — <span class="amount">${fmtAmt(p.amountPerSpot)} tUSD8</span></div>
+      <div class="job-meta"><span>Applied ${fmtDate(a.appliedAt)}</span><span>Job deadline ${fmtDate(p.deadline)}</span></div>
+      <div class="myapp-hint">${MY_HINTS[a.state] || ""}</div>
+    </div>
+    <span class="status st-${a.state}">${A_STATES[a.state]}</span>
+    <button data-open="${p.id}">Open job</button>
+  </div>`;
+}
+
 function renderList() {
   const el = $("#jobList");
+  const sub = $("#myAppsFilters");
+  if (filter === "mine") {
+    // "My applications" is a sub-tab view inside the board: the status
+    // sub-tabs (All / Approved / Rejected / Pending / Paid) appear under the
+    // main filters and the list shows application rows, not job cards.
+    sub.classList.remove("hidden");
+    const mine = myAssignments().slice().reverse(); // newest first
+    document.querySelectorAll("#myAppsFilters [data-mfilter]").forEach(b => {
+      const key = b.dataset.mfilter;
+      const states = MY_FILTER_STATES[key];
+      const n = states === null ? mine.length : mine.filter(a => states.includes(a.state)).length;
+      const label = key[0].toUpperCase() + key.slice(1);
+      b.textContent = account && mine.length ? `${label} (${n})` : label;
+      b.classList.toggle("active", myFilter === key);
+    });
+    if (!account) {
+      el.innerHTML = `<p class="muted">Connect your wallet to see the jobs you've applied for, grouped by the client's decision.</p>`;
+      return;
+    }
+    if (!mine.length) {
+      el.innerHTML = `<p class="muted">You haven't applied to any job yet — switch to All jobs, pick one, and hit Apply for a spot.</p>`;
+      return;
+    }
+    const states = MY_FILTER_STATES[myFilter];
+    const list = states === null ? mine : mine.filter(a => states.includes(a.state));
+    if (!list.length) {
+      el.innerHTML = `<p class="muted">No ${myFilter} applications.</p>`;
+      return;
+    }
+    el.innerHTML = list.map(myAppRow).join("");
+    el.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => openDetail(Number(b.dataset.open))));
+    return;
+  }
+  sub.classList.add("hidden");
   let list = postings;
   if (filter === "posted") list = postings.filter(p => same(p.client, account));
-  if (filter === "mine") {
-    const ids = new Set(myAssignments().map(a => a.postingId));
-    list = postings.filter(p => ids.has(p.id));
-  }
   if (!list.length) {
     el.innerHTML = `<p class="muted">${filter === "all" ? "No jobs posted yet — post the first one below." : "Nothing in this view. Connect the matching wallet, or switch the filter."}</p>`;
     return;
@@ -133,60 +186,6 @@ function renderList() {
       ${spotsBar(p)}
     </div>`).join("");
   el.querySelectorAll(".job-card").forEach(c => c.addEventListener("click", () => openDetail(Number(c.dataset.id))));
-}
-
-// ---------- my applications ----------
-const MY_FILTER_STATES = { all: null, pending: [0], approved: [1, 2], paid: [3], rejected: [4] };
-const MY_HINTS = {
-  0: "Waiting for the client's decision.",
-  1: "You hold a funded spot — open the job to deliver your work.",
-  2: "Delivered — waiting for the client to release your pay.",
-  3: "Paid out to your wallet. ✅",
-  4: "Not approved this time.",
-  5: "This spot was refunded to the client under the guard rules."
-};
-function renderMyApps() {
-  const el = $("#myAppsList");
-  if (!el) return;
-  const mine = myAssignments().slice().reverse(); // newest first
-  const counts = {};
-  for (const [key, states] of Object.entries(MY_FILTER_STATES)) {
-    counts[key] = states === null ? mine.length : mine.filter(a => states.includes(a.state)).length;
-  }
-  document.querySelectorAll("#myAppsFilters [data-mfilter]").forEach(b => {
-    const key = b.dataset.mfilter;
-    const label = key[0].toUpperCase() + key.slice(1);
-    b.textContent = mine.length ? `${label} (${counts[key]})` : label;
-    b.classList.toggle("active", myFilter === key);
-  });
-  if (!account) {
-    el.innerHTML = `<p class="muted">Connect your wallet to see the jobs you've applied for, grouped by the client's decision.</p>`;
-    return;
-  }
-  if (!mine.length) {
-    el.innerHTML = `<p class="muted">You haven't applied to any job yet — pick one from the board above and hit Apply for a spot.</p>`;
-    return;
-  }
-  const states = MY_FILTER_STATES[myFilter];
-  const list = states === null ? mine : mine.filter(a => states.includes(a.state));
-  if (!list.length) {
-    el.innerHTML = `<p class="muted">No ${myFilter} applications.</p>`;
-    return;
-  }
-  el.innerHTML = list.map(a => {
-    const p = postings.find(x => x.id === a.postingId);
-    if (!p) return "";
-    return `<div class="myapp-row">
-      <div class="myapp-main">
-        <div><b>${escapeHtml(p.title)}</b>${categoryBadge(p.description)} — <span class="amount">${fmtAmt(p.amountPerSpot)} tUSD8</span></div>
-        <div class="job-meta"><span>Applied ${fmtDate(a.appliedAt)}</span><span>Job deadline ${fmtDate(p.deadline)}</span></div>
-        <div class="myapp-hint">${MY_HINTS[a.state] || ""}</div>
-      </div>
-      <span class="status st-${a.state}">${A_STATES[a.state]}</span>
-      <button data-open="${p.id}">Open job</button>
-    </div>`;
-  }).join("");
-  el.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => openDetail(Number(b.dataset.open))));
 }
 
 // ---------- detail ----------
@@ -346,7 +345,6 @@ async function connect() {
   $("#accountLabel").textContent = account;
   await refreshBalances();
   renderList();
-  renderMyApps();
   if (selectedId !== null) renderDetail();
 }
 
@@ -362,8 +360,13 @@ document.querySelectorAll(".filter[data-filter]").forEach(b => b.addEventListene
 }));
 document.querySelectorAll("#myAppsFilters [data-mfilter]").forEach(b => b.addEventListener("click", () => {
   myFilter = b.dataset.mfilter;
-  renderMyApps();
+  renderList();
 }));
+$("#navMyApps").addEventListener("click", () => {
+  document.querySelectorAll(".filter[data-filter]").forEach(x => x.classList.toggle("active", x.dataset.filter === "mine"));
+  filter = "mine";
+  renderList();
+});
 $("#categorySelect").addEventListener("change", (e) => {
   $("#aiFields").classList.toggle("hidden", e.target.value !== "AI training & evaluation");
 });

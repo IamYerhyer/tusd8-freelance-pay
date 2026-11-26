@@ -25,7 +25,7 @@
     </div>
     <div class="nav-links">
       <a href="#board">Job board</a>
-      <a href="#myapps">My applications</a>
+      <a href="#board" id="navMyApps">My applications</a>
       <a href="#post">Post a job</a>
       <a href="#payouts">Payouts</a>
       <a href="https://github.com/IamYerhyer/tusd8-freelance-pay" target="_blank" rel="noopener">GitHub</a>
@@ -71,21 +71,14 @@
         <button id="refreshBtn" class="filter">↻ Refresh</button>
       </div>
     </div>
-    <div id="jobList" class="job-list"><p class="muted">Loading the board from Aevum testnet…</p></div>
-  </section>
-
-  <section class="panel" id="myapps">
-    <div class="panel-head">
-      <h2>My applications</h2>
-      <div class="filters" id="myAppsFilters">
-        <button data-mfilter="all" class="filter active">All</button>
-        <button data-mfilter="approved" class="filter">Approved</button>
-        <button data-mfilter="rejected" class="filter">Rejected</button>
-        <button data-mfilter="pending" class="filter">Pending</button>
-        <button data-mfilter="paid" class="filter">Paid</button>
-      </div>
+    <div class="filters subfilters hidden" id="myAppsFilters">
+      <button data-mfilter="all" class="filter active">All</button>
+      <button data-mfilter="approved" class="filter">Approved</button>
+      <button data-mfilter="rejected" class="filter">Rejected</button>
+      <button data-mfilter="pending" class="filter">Pending</button>
+      <button data-mfilter="paid" class="filter">Paid</button>
     </div>
-    <div id="myAppsList"><p class="muted">Connect your wallet to see the jobs you've applied for, grouped by the client's decision.</p></div>
+    <div id="jobList" class="job-list"><p class="muted">Loading the board from Aevum testnet…</p></div>
   </section>
 
   <section class="panel" id="post">
