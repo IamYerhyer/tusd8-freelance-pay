@@ -407,9 +407,13 @@ function activateMine() {
   const board = $("#board");
   if (board) board.scrollIntoView({ behavior: "smooth" });
 }
-// On the board page the nav link switches the view in place; on the other
-// pages it is a plain link to index.html#myapps, handled at load below.
-if ($("#navMyApps") && $("#jobList")) $("#navMyApps").addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", "#myapps"); activateMine(); });
+// On the board page the My applications links (top bar and ☰ menu) switch
+// the view in place; on the other pages they are plain links to
+// index.html#myapps, handled at load below.
+function closeMenu() { const m = $("#mobileMenu"); if (m) m.classList.add("hidden"); }
+if ($("#menuBtn")) $("#menuBtn").addEventListener("click", () => { const m = $("#mobileMenu"); if (m) m.classList.toggle("hidden"); });
+if ($("#mobileMenu")) $("#mobileMenu").querySelectorAll("a").forEach(a => a.addEventListener("click", closeMenu));
+if ($("#jobList")) document.querySelectorAll(".mine-link").forEach(a => a.addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", "#myapps"); closeMenu(); activateMine(); }));
 if ($("#categorySelect")) $("#categorySelect").addEventListener("change", (e) => {
   $("#aiFields").classList.toggle("hidden", e.target.value !== "AI training & evaluation");
 });

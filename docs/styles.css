@@ -214,6 +214,17 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .fx-req .sim { color: var(--warn-text); font-weight: 700; }
 
 .nav-links a.active { color: var(--accent); font-weight: 600; }
+.menu-btn { display: none; font-size: 21px; line-height: 1; padding: 9px 13px; }
+.mobile-menu {
+  display: grid; gap: 2px; padding: 10px 16px 14px;
+  border-top: 1px solid var(--line); background: var(--panel);
+}
+.mobile-menu a {
+  padding: 13px 10px; font-size: 17px; color: var(--text);
+  text-decoration: none; border-radius: 10px;
+}
+.mobile-menu a:hover, .mobile-menu a:active { background: var(--panel-2); }
+.mobile-menu a.active { color: var(--accent); font-weight: 700; }
 #board { scroll-margin-top: 96px; }
 .hero.compact { padding: 64px 22px 40px; }
 .hero.compact h1 { font-size: 44px; }
@@ -247,6 +258,7 @@ footer { max-width: 1200px; margin: 0 auto; padding: 6px 22px 34px; color: var(-
 @media (max-width: 720px) {
   .row { grid-template-columns: 1fr; }
   .nav-links { display: none; }
+  .menu-btn { display: inline-block; }
   .panel { padding: 22px; }
   .hero { padding: 60px 18px 50px; }
 }
