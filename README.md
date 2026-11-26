@@ -17,7 +17,7 @@ The front end is three pages: the **Job board** (index), **Post a job**
 (`post.html`) and **Payouts** (`payouts.html`), sharing one wallet session,
 theme and script.
 
-## The flow (current — JobBoard, V3)
+## The flow (current — JobBoardV4)
 
 1. **Client posts a job** — title, requirements, pay per spot, number of
    spots, deadline — and the **full budget (pay × spots) is escrowed up
@@ -31,6 +31,18 @@ theme and script.
    the deadline; a delivered spot only after the deadline **and** a 3-day
    review window. After deadline + review window the client closes the
    posting and the unspent budget returns to them.
+7. **Disputes (V4):** if a client calls good work junk — or a freelancer
+   claims pay for junk — either side can **open a dispute** on a delivered
+   spot. The spot's pay **freezes** (no refund, no forced settlement) until
+   a neutral **arbitrator** named in the contract reviews the delivery
+   against the job requirements and rules: release to the freelancer, or
+   refund to the client. The client can also settle voluntarily at any
+   time by releasing.
+8. **Client rating badge (V4):** a freelancer who has actually held a
+   settled spot with a client (paid or refunded) can give that client a
+   **thumbs up or thumbs down** — one thumb per wallet, changeable. The
+   public counts ride on every job card as a badge next to the client, so
+   freelancers can judge a client **before** applying.
 
 ## Payout layer (getting earnings out)
 
@@ -89,23 +101,47 @@ the work. That breaks the trust the product is selling, so:
   3-day review window after delivery have passed. Taking the work and
   clawing the money back is not possible inside the window.
 
-Dispute arbitration is deliberately out of scope — it is the named production
-next step.
+**Disputes (V4):** the guard alone can't judge quality, so a delivered spot
+can be disputed by either side. Opening a dispute freezes that spot's pay —
+the guard can no longer refund it and closing the posting leaves it locked —
+until the contract's arbitrator rules release or refund. In production the
+arbitrator role belongs to a platform review process (or multisig); on this
+testnet build it is a dedicated wallet, and the role is transferable
+on-chain.
 
 ## Contracts
 
 | Contract | Address |
 |---|---|
-| JobBoard (V3 — current, funded postings + spots) | `0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b` |
+| JobBoardV4 (current — board + disputes + client ratings) | `0xd0a22861122fcf221ab9c017457916ff9aa1a552` |
+| JobBoard (V3 — funded postings + spots) | `0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b` |
 | FreelanceEscrowV2 (open job board) | `0x98ad3d72e7a92246606f91c078f5746758635b9f` |
 | FreelanceEscrow (V1 — direct hire only) | `0x07310bcba28550d429f1d7d779f47e049f468b0e` |
 | tUSD8 (official, QDay Aevum) | `0x456569838f1d43009A91ebA4263147Afd7233483` |
 
 - Network: QDay Aevum testnet, chain ID `44005`
 - RPC: `https://rpc-test.qday.info`
-- Explorer: https://explorer-test.qday.info/address/0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b
-- Deploy txs — V3: `0x562a4693fe3ab3e3d2dbcd919ba235e1de7d1b111265b4ac733bb9b642bf670a` · V2: `0xdb06b55b88e3553d2d7cf3341d66c2a0fd3b9a9989c53a7f94d66389b1b6ae04` · V1: `0x9ece21c6ef28a27db8cb2ce71523120419dd467383984a590ca8ec9e746d4b56`
-- Source: **verified** on the explorer for all three versions
+- Explorer: https://explorer-test.qday.info/address/0xd0a22861122fcf221ab9c017457916ff9aa1a552
+- Deploy txs — V4: `0x54cb32fab51aa46ca195288ed90d7e4cd41bf5e0669b8fd6a925c2eb006ca0c7` · V3: `0x562a4693fe3ab3e3d2dbcd919ba235e1de7d1b111265b4ac733bb9b642bf670a` · V2: `0xdb06b55b88e3553d2d7cf3341d66c2a0fd3b9a9989c53a7f94d66389b1b6ae04` · V1: `0x9ece21c6ef28a27db8cb2ce71523120419dd467383984a590ca8ec9e746d4b56`
+- Source: **verified** on the explorer for all four versions
+
+## Live dispute run on V4 (27 Nov 2026)
+
+V4 launched with the same two funded postings (3 + 2 spots × 1 tUSD8) and
+immediately ran the scenario the dispute path exists for — good work, a
+client who won't release, a freelancer who appeals:
+
+| Step | Tx |
+|---|---|
+| Apply | `0xe31affb747bb904f04822fd1957987749c43beecd649915b6e1c8019039d0e15` |
+| Approve | `0x41d65fdb148ef38b83e283158910de816805ba0bbad2ac43a260e773d42af25f` |
+| Deliver | `0xfe9800d76e4a3214a8b4b476f5bc064a3c5bafe51799b5d53be139b8ee12fe01` |
+| **Open dispute** (freelancer) | `0xa8cbe7b6d2729f3bacc49d7f46cb72644829175d53cc450289387a02fd5be273` |
+| **Arbitrator rules: pay freelancer** | `0x4517b2d07baf7558eff8eb1ccfbc4944f8b215172538d554b236222562e04aa4` |
+| Freelancer rates the client 👍 | `0xe408fdb2a8f870ef8bbe637598e51c42123d5c7938413469c51003995ddba39a` |
+
+Result: the arbitrator's ruling paid the freelancer in full (1 tUSD8), and
+the client's public badge now reads **👍 1 · 👎 0** on the live board.
 
 ## Live board run (20 Nov 2026)
 
@@ -152,7 +188,7 @@ Foundry project (Solidity 0.8.20):
 
 ```bash
 forge build
-forge test   # 30 tests: V1 spec checklist + V2 claim flow + V3 board flow
+forge test   # 49 tests: V1 spec checklist + V2 claim flow + V3 board flow + V4 disputes & ratings
 ```
 
 Test coverage: happy path end-to-end · cancel before funding · funded refund
@@ -175,6 +211,11 @@ terms rejected · deposit without token approval fails.
 - [x] Payout layer: real crypto withdrawal; live-FX local-currency quote
       with the 1% fee itemised and requests recorded as labelled simulations;
       conversion honestly marked unavailable (no Aevum swap route exists)
+- [x] V4 trust layer: dispute + arbitrator path (either side can dispute a
+      delivered spot; pay freezes until the arbitrator rules) and public
+      client rating badges (thumbs up/down from freelancers with a settled
+      spot) — 49/49 tests total, deployed + verified, live dispute run
+      completed
 - [ ] Payout options (after release): convert to other stablecoins, withdraw
       as crypto, or withdraw to local currency at a transparent quoted rate
       (bank settlement via a licensed partner in production; labelled as a
