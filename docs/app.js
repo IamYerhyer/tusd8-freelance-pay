@@ -287,18 +287,47 @@ function renderDetail() {
   document.querySelectorAll("[data-refund]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.refundAssignment(Number(b.dataset.refund)))));
 }
 
+// Poll the public read RPC for a receipt instead of trusting the wallet
+// provider's tx.wait(): the Aevum RPC is slow, and a polling hiccup (or a
+// failed page refresh afterwards) used to be reported as "Transaction
+// failed" even though the transaction had already succeeded on-chain.
+async function confirmTx(hash, tries = 45) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await readProvider.getTransactionReceipt(hash);
+      if (r) return r;
+    } catch (e) { /* transient RPC error — keep polling */ }
+    await new Promise(res => setTimeout(res, 4000));
+  }
+  return null;
+}
+
 async function runTx(fn) {
   if (!signer) return toast("Connect your wallet first.");
+  let tx;
   try {
     toast("Waiting for confirmation in your wallet…");
-    const tx = await fn();
-    toast(`Sent — waiting for the network… <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">${short(tx.hash)}</a>`);
-    await tx.wait();
-    txToast(tx.hash);
+    tx = await fn();
+  } catch (e) {
+    if (e.code === 4001 || e.code === "ACTION_REJECTED") return toast("Cancelled in your wallet — nothing was submitted.");
+    return toast("Transaction failed: " + (e.shortMessage || e.message || e), 9000);
+  }
+  // From here the transaction IS submitted. Never call it "failed" again:
+  // only a mined receipt with status 0 means it truly didn't take effect.
+  toast(`Submitted — confirming on-chain… <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">${short(tx.hash)}</a>`);
+  const receipt = await confirmTx(tx.hash);
+  if (receipt && receipt.status === 0) {
+    return toast(`⚠️ The transaction landed on-chain but reverted, so it had no effect: <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">${short(tx.hash)}</a>`, 10000);
+  }
+  if (!receipt) {
+    return toast(`⏳ Still confirming — your transaction is submitted and most likely fine. Check <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">the explorer</a> or tap Refresh in a moment. Please don't submit it again.`, 12000);
+  }
+  txToast(tx.hash);
+  try {
     await refreshBalances();
     await loadAll();
   } catch (e) {
-    toast("Transaction failed: " + (e.shortMessage || e.message || e), 9000);
+    toast(`✅ Confirmed on-chain: <a href="${EXPLORER}/tx/${tx.hash}" target="_blank" rel="noopener">${short(tx.hash)}</a> — the page refresh hit a snag, tap ↻ Refresh to see it.`, 9000);
   }
 }
 
@@ -398,11 +427,17 @@ $("#createForm").addEventListener("submit", async (e) => {
   const allowance = await tokenWrite.allowance(account, BOARD);
   if (allowance < total) {
     toast("Step 1 of 2: approve the board to hold the job budget…");
+    let atx;
     try {
-      const tx = await tokenWrite.approve(BOARD, total);
-      await tx.wait();
-      txToast(tx.hash);
-    } catch (err) { return toast("Approval failed: " + (err.shortMessage || err.message), 9000); }
+      atx = await tokenWrite.approve(BOARD, total);
+    } catch (err) {
+      if (err.code === 4001 || err.code === "ACTION_REJECTED") return toast("Approval cancelled in your wallet — the job was not posted.");
+      return toast("Approval failed: " + (err.shortMessage || err.message), 9000);
+    }
+    const arc = await confirmTx(atx.hash);
+    if (arc && arc.status === 0) return toast("⚠️ The approval landed on-chain but reverted — the job was not posted. Please try again.", 10000);
+    if (!arc) return toast(`⏳ Approval still confirming — check <a href="${EXPLORER}/tx/${atx.hash}" target="_blank" rel="noopener">the explorer</a> before retrying, so you don't approve twice.`, 12000);
+    txToast(atx.hash);
   }
   toast("Step 2 of 2: posting the job and funding its spots…");
   await runTx(() => boardWrite.createPosting(perSpot, spots, deadline, f.get("title"), description));
