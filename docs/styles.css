@@ -248,6 +248,13 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .status.st-3 { color: var(--success); border-color: var(--success); }
 .status.st-4 { color: var(--danger); border-color: var(--danger); }
 .status.st-5 { color: var(--muted); border-color: var(--line); }
+.status.st-6 { color: var(--warn-text); border-color: var(--warn-line); background: var(--warn-bg); }
+.client-badge {
+  display: inline-block; font-size: 12px; font-weight: 700; white-space: nowrap;
+  padding: 3px 9px; border-radius: 999px; vertical-align: middle;
+  border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn-text);
+}
+button.rate-on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
 
 .toast {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 30;

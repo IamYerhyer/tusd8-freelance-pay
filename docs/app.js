@@ -4,7 +4,7 @@
 const RPC = "https://rpc-test.qday.info";
 const EXPLORER = "https://explorer-test.qday.info";
 const CHAIN_ID = 44005;
-const BOARD = "0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b";
+const BOARD = "0xd0a22861122fcf221ab9c017457916ff9aa1a552";
 const TUSD8 = "0x456569838f1d43009A91ebA4263147Afd7233483";
 const REVIEW_WINDOW = 3 * 24 * 3600;
 
@@ -12,7 +12,7 @@ const BOARD_ABI = [
   "function postingCount() view returns (uint256)",
   "function assignmentCount() view returns (uint256)",
   "function getPosting(uint256 id) view returns (tuple(address client, uint256 amountPerSpot, uint256 spotsTotal, uint256 spotsFilled, uint256 releasedCount, uint256 refundedCount, uint256 deadline, string title, string description, uint8 state, uint256 createdAt))",
-  "function getAssignment(uint256 id) view returns (tuple(uint256 postingId, address freelancer, uint8 state, string proof, uint256 appliedAt, uint256 deliveredAt))",
+  "function getAssignment(uint256 id) view returns (tuple(uint256 postingId, address freelancer, uint8 state, string proof, uint256 appliedAt, uint256 deliveredAt, uint256 disputedAt, address disputeBy))",
   "function createPosting(uint256 amountPerSpot, uint256 spots, uint256 deadline, string title, string description) returns (uint256)",
   "function applyForSpot(uint256 postingId) returns (uint256)",
   "function approveApplication(uint256 assignmentId)",
@@ -20,7 +20,14 @@ const BOARD_ABI = [
   "function deliver(uint256 assignmentId, string proof)",
   "function release(uint256 assignmentId)",
   "function refundAssignment(uint256 assignmentId)",
-  "function closePosting(uint256 postingId)"
+  "function closePosting(uint256 postingId)",
+  "function openDispute(uint256 assignmentId)",
+  "function resolveDispute(uint256 assignmentId, bool payFreelancer)",
+  "function arbitrator() view returns (address)",
+  "function clientRating(address client) view returns (uint256, uint256)",
+  "function hasWorkedWith(address freelancer, address client) view returns (bool)",
+  "function ratingOf(address client, address rater) view returns (int8)",
+  "function rateClient(address client, bool up)"
 ];
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -28,7 +35,7 @@ const ERC20_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)",
   "function transfer(address to, uint256 amount) returns (bool)"
 ];
-const A_STATES = ["Applied", "Approved", "Delivered", "Released", "Rejected", "Refunded"];
+const A_STATES = ["Applied", "Approved", "Delivered", "Released", "Rejected", "Refunded", "Disputed"];
 
 const readProvider = new ethers.JsonRpcProvider(RPC);
 const boardRead = new ethers.Contract(BOARD, BOARD_ABI, readProvider);
@@ -36,6 +43,8 @@ const tokenRead = new ethers.Contract(TUSD8, ERC20_ABI, readProvider);
 
 let signer = null, account = null, boardWrite = null, tokenWrite = null;
 let postings = [], assignments = [], filter = "all", selectedId = null, myFilter = "all";
+let arbitratorAddr = null;
+const clientInfo = {}; // client address -> { up, down, myVote, eligible }
 
 const $ = (s) => document.querySelector(s);
 const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
@@ -65,6 +74,11 @@ function categoryBadge(desc) {
   if (!c) return "";
   return ` <span class="badge ${c.startsWith("AI") ? "ai" : ""}">${escapeHtml(c)}</span>`;
 }
+function clientBadge(client) {
+  const info = clientInfo[(client || "").toLowerCase()];
+  if (!info || (info.up + info.down) === 0) return "";
+  return ` <span class="client-badge" title="How freelancers who worked with this client rated them">👍 ${info.up} · 👎 ${info.down}</span>`;
+}
 function spotsBar(p) {
   const total = Number(p.spotsTotal), filled = Number(p.spotsFilled);
   const pct = total ? Math.round((filled / total) * 100) : 0;
@@ -89,7 +103,22 @@ async function loadAll() {
   for (let i = 0; i < ac; i++) {
     const a = await boardRead.getAssignment(i);
     assignments.push({ id: i, postingId: Number(a.postingId), freelancer: a.freelancer,
-      state: Number(a.state), proof: a.proof, appliedAt: a.appliedAt, deliveredAt: a.deliveredAt });
+      state: Number(a.state), proof: a.proof, appliedAt: a.appliedAt, deliveredAt: a.deliveredAt,
+      disputedAt: a.disputedAt, disputeBy: a.disputeBy });
+  }
+  try { arbitratorAddr = await boardRead.arbitrator(); } catch (e) { arbitratorAddr = null; }
+  // Client rating badges + (when a wallet is connected) my eligibility/vote.
+  const clients = [...new Set(postings.map(p => p.client))];
+  for (const c of clients) {
+    try {
+      const [up, down] = await boardRead.clientRating(c);
+      const info = { up: Number(up), down: Number(down), myVote: 0, eligible: false };
+      if (account) {
+        info.eligible = await boardRead.hasWorkedWith(account, c);
+        if (info.eligible) info.myVote = Number(await boardRead.ratingOf(c, account));
+      }
+      clientInfo[c.toLowerCase()] = info;
+    } catch (e) { /* badge is decorative — never block the board on it */ }
   }
   postings.reverse();
   renderStats();
@@ -111,14 +140,15 @@ function myAssignments() {
   return assignments.filter(a => same(a.freelancer, account));
 }
 
-const MY_FILTER_STATES = { all: null, pending: [0], approved: [1, 2], paid: [3], rejected: [4] };
+const MY_FILTER_STATES = { all: null, pending: [0], approved: [1, 2, 6], paid: [3], rejected: [4] };
 const MY_HINTS = {
   0: "Waiting for the client's decision.",
   1: "You hold a funded spot — open the job to deliver your work.",
   2: "Delivered — waiting for the client to release your pay.",
   3: "Paid out to your wallet. ✅",
   4: "Not approved this time.",
-  5: "This spot was refunded to the client under the guard rules."
+  5: "This spot was refunded to the client under the guard rules.",
+  6: "In dispute — the arbitrator is reviewing this spot."
 };
 
 function myAppRow(a) {
@@ -182,7 +212,7 @@ function renderList() {
     <div class="job-card" data-id="${p.id}">
       <h3>${escapeHtml(p.title)}${categoryBadge(p.description)} — <span class="amount">${fmtAmt(p.amountPerSpot)} tUSD8 / spot</span></h3>
       <div class="job-meta">
-        <span>Client ${short(p.client)}</span><span>Deadline ${fmtDate(p.deadline)}</span>
+        <span>Client ${short(p.client)}${clientBadge(p.client)}</span><span>Deadline ${fmtDate(p.deadline)}</span>
         <span>${p.state === 1 ? "Closed" : "Open — budget funded in escrow"}</span>
       </div>
       ${spotsBar(p)}
@@ -203,6 +233,9 @@ function refundGuardFor(a, p, nowSec) {
     return ok
       ? { enabled: true, reason: "Deadline and 3-day review window have both passed — refund unlocked." }
       : { enabled: false, reason: `Refund locked: after delivery it needs the deadline and the 3-day review window (ends ${fmtDate(reviewEnd)}) to pass.` };
+  }
+  if (a.state === 6) { // Disputed
+    return { enabled: false, reason: "Frozen — a dispute is open on this spot. Only the arbitrator can settle it (or the client can release)." };
   }
   return { enabled: false, reason: "" };
 }
@@ -233,27 +266,45 @@ function renderDetail() {
         : `<p class="muted">${p.state === 1 ? "This posting is closed." : "All spots are taken."}</p>`;
     } else if (mine.state === 0) myBlock = `<p>Your application: <b>Applied</b> — waiting for the client to approve. Spots go to qualified applicants in order.</p>`;
     else if (mine.state === 1) myBlock = `<input id="proofInput" placeholder="Deliverable link or hash (proof)"><button class="primary" id="actDeliver">Deliver work</button> <span class="guard-note">You hold a funded spot. Deliver before the deadline to get paid.</span>`;
-    else if (mine.state === 2) myBlock = `<p>Your delivery is in — waiting for the client to release your <b>${fmtAmt(p.amountPerSpot)} tUSD8</b>.</p>`;
+    else if (mine.state === 2) myBlock = `<p>Your delivery is in — waiting for the client to release your <b>${fmtAmt(p.amountPerSpot)} tUSD8</b>.</p>
+      <button id="actDispute">Open a dispute</button> <span class="guard-note">If the client won't release pay for fair work, open a dispute — the spot freezes and a neutral arbitrator reviews your delivery against the job requirements and rules.</span>`;
+    else if (mine.state === 6) myBlock = `<p>⚖️ <b>Dispute open</b> on your spot — the arbitrator is reviewing. The pay is frozen until they rule: release to you, or refund to the client.</p>`;
     else if (mine.state === 3) myBlock = `<p class="tx-ok">✅ Paid — you earned ${fmtAmt(p.amountPerSpot)} tUSD8 for this spot.</p>`;
     else if (mine.state === 4) myBlock = `<p>Your application was not approved this time.</p>`;
     else if (mine.state === 5) myBlock = `<p>This spot was refunded to the client under the guard rules.</p>`;
   }
 
+  const isArbitrator = arbitratorAddr && same(arbitratorAddr, account);
   const rows = list.map(a => {
     let controls = "";
     if (isClient) {
       if (a.state === 0) controls = `<button data-approve="${a.id}">Approve (qualify)</button> <button data-reject="${a.id}">Reject</button>`;
-      if (a.state === 2) controls = `<button class="primary" data-release="${a.id}">Release ${fmtAmt(p.amountPerSpot)} tUSD8</button>`;
-      if (a.state === 1 || a.state === 2) {
+      if (a.state === 2) controls = `<button class="primary" data-release="${a.id}">Release ${fmtAmt(p.amountPerSpot)} tUSD8</button> <button data-dispute="${a.id}">Open a dispute</button>`;
+      if (a.state === 6) controls = `<button class="primary" data-release="${a.id}">Release ${fmtAmt(p.amountPerSpot)} tUSD8 (settle)</button> <span class="guard-note">A dispute is open on this spot — releasing settles it in the freelancer's favour.</span>`;
+      if (a.state === 1 || a.state === 2 || a.state === 6) {
         const g = refundGuardFor(a, p, nowSec);
         controls += ` <button data-refund="${a.id}" ${g.enabled ? "" : "disabled"}>Refund spot</button> <span class="guard-note">${g.reason}</span>`;
       }
     }
+    if (isArbitrator && a.state === 6) {
+      controls += `<button class="primary" data-resolve-pay="${a.id}">⚖️ Rule: pay freelancer</button> <button data-resolve-refund="${a.id}">⚖️ Rule: refund client</button>`;
+    }
+    const disputeNote = a.state === 6
+      ? `<div class="myapp-hint">⚖️ Dispute opened by ${same(a.disputeBy, p.client) ? "the client" : "the freelancer"} · ${fmtDate(a.disputedAt)} — frozen until the arbitrator rules.</div>`
+      : "";
     return `<div class="assign-row">
-      <div><b>${short(a.freelancer)}</b> — ${A_STATES[a.state]}${a.proof ? ` · proof: ${escapeHtml(a.proof)}` : ""}${same(a.freelancer, account) ? " · (you)" : ""}</div>
+      <div><b>${short(a.freelancer)}</b> — ${A_STATES[a.state]}${a.proof ? ` · proof: ${escapeHtml(a.proof)}` : ""}${same(a.freelancer, account) ? " · (you)" : ""}${disputeNote}</div>
       <div class="assign-controls">${controls}</div>
     </div>`;
   }).join("");
+
+  const cInfo = clientInfo[(p.client || "").toLowerCase()] || { up: 0, down: 0, myVote: 0, eligible: false };
+  const rateBlock = (!isClient && account && cInfo.eligible)
+    ? `<div class="actions"><span>Your experience with this client? Rate them:</span>
+       <button data-rate="1" class="${cInfo.myVote === 1 ? "rate-on" : ""}">👍 Thumbs up</button>
+       <button data-rate="-1" class="${cInfo.myVote === -1 ? "rate-on" : ""}">👎 Thumbs down</button>
+       <span class="guard-note">You've held a settled spot with this client, so your thumb counts toward their public badge.</span></div>`
+    : "";
 
   const canClose = isClient && p.state === 0 && nowSec > Number(p.deadline) + REVIEW_WINDOW;
   const closeNote = isClient && p.state === 0
@@ -266,12 +317,13 @@ function renderDetail() {
     ${spotsBar(p)}
     <div class="detail-grid">
       <div><span>Pay per spot</span><b class="amount">${fmtAmt(p.amountPerSpot)} tUSD8</b></div>
-      <div><span>Client</span><span>${p.client}</span></div>
+      <div><span>Client</span><span>${p.client}${clientBadge(p.client)}</span></div>
       <div><span>Deadline</span><span>${fmtDate(p.deadline)}</span></div>
       <div><span>Status</span><span>${p.state === 1 ? "Closed" : "Open — full budget held in escrow"}</span></div>
       <div><span>Requirements</span><span class="pre">${escapeHtml(p.description)}</span></div>
     </div>
     <div class="actions">${myBlock}</div>
+    ${rateBlock}
     <h3 class="sub">Applications &amp; spots (${list.length})</h3>
     ${rows || '<p class="muted">No applications yet — be the first.</p>'}
     <div class="actions">${closeNote}</div>`;
@@ -284,6 +336,11 @@ function renderDetail() {
     runTx(() => boardWrite.deliver(mine.id, proof));
   });
   bind("#actClose", () => runTx(() => boardWrite.closePosting(p.id)));
+  bind("#actDispute", () => { if (mine) runTx(() => boardWrite.openDispute(mine.id)); });
+  document.querySelectorAll("[data-dispute]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.openDispute(Number(b.dataset.dispute)))));
+  document.querySelectorAll("[data-resolve-pay]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.resolveDispute(Number(b.dataset.resolvePay), true))));
+  document.querySelectorAll("[data-resolve-refund]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.resolveDispute(Number(b.dataset.resolveRefund), false))));
+  document.querySelectorAll("[data-rate]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.rateClient(p.client, b.dataset.rate === "1"))));
   document.querySelectorAll("[data-approve]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.approveApplication(Number(b.dataset.approve)))));
   document.querySelectorAll("[data-reject]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.rejectApplication(Number(b.dataset.reject)))));
   document.querySelectorAll("[data-release]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.release(Number(b.dataset.release)))));
@@ -375,6 +432,7 @@ async function setupWallet(provider) {
   await refreshBalances();
   renderList();
   if (selectedId !== null) renderDetail();
+  loadAll().catch(() => {}); // refresh rating badges/eligibility for this account
 }
 
 async function connect() {
