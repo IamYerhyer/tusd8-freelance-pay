@@ -4,7 +4,7 @@
 const RPC = "https://rpc-test.qday.info";
 const EXPLORER = "https://explorer-test.qday.info";
 const CHAIN_ID = 44005;
-const BOARD = "0xd0a22861122fcf221ab9c017457916ff9aa1a552";
+const BOARD = "0xe6948d9554e2bF73400922cbEfa663406B29ee44";
 const TUSD8 = "0x456569838f1d43009A91ebA4263147Afd7233483";
 const REVIEW_WINDOW = 3 * 24 * 3600;
 
@@ -27,7 +27,10 @@ const BOARD_ABI = [
   "function clientRating(address client) view returns (uint256, uint256)",
   "function hasWorkedWith(address freelancer, address client) view returns (bool)",
   "function ratingOf(address client, address rater) view returns (int8)",
-  "function rateClient(address client, bool up)"
+  "function rateClient(address client, bool up)",
+  "function rateFreelancer(address freelancer, bool up)",
+  "function freelancerRating(address freelancer) view returns (uint256, uint256)",
+  "function freelancerRatingOf(address freelancer, address rater) view returns (int8)"
 ];
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -45,6 +48,7 @@ let signer = null, account = null, boardWrite = null, tokenWrite = null;
 let postings = [], assignments = [], filter = "all", selectedId = null, myFilter = "all";
 let arbitratorAddr = null;
 const clientInfo = {}; // client address -> { up, down, myVote, eligible }
+const freelancerInfo = {}; // freelancer address -> { up, down, myVote, eligible }
 
 const $ = (s) => document.querySelector(s);
 const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
@@ -78,6 +82,11 @@ function clientBadge(client) {
   const info = clientInfo[(client || "").toLowerCase()];
   if (!info || (info.up + info.down) === 0) return "";
   return ` <span class="client-badge" title="How freelancers who worked with this client rated them">👍 ${info.up} · 👎 ${info.down}</span>`;
+}
+function freelancerBadge(freelancer) {
+  const info = freelancerInfo[(freelancer || "").toLowerCase()];
+  if (!info || (info.up + info.down) === 0) return "";
+  return ` <span class="client-badge" title="How clients who settled a spot with this freelancer rated them">👍 ${info.up} · 👎 ${info.down}</span>`;
 }
 function spotsBar(p) {
   const total = Number(p.spotsTotal), filled = Number(p.spotsFilled);
@@ -119,6 +128,21 @@ async function loadAll() {
       }
       clientInfo[c.toLowerCase()] = info;
     } catch (e) { /* badge is decorative — never block the board on it */ }
+  }
+  // Freelancer badges — shown on application rows so clients can judge
+  // before approving; eligibility/myVote filled when the connected
+  // account is a client who settled a spot with that freelancer.
+  const workers = [...new Set(assignments.map(a => a.freelancer))];
+  for (const f of workers) {
+    try {
+      const [up, down] = await boardRead.freelancerRating(f);
+      const info = { up: Number(up), down: Number(down), myVote: 0, eligible: false };
+      if (account) {
+        info.eligible = await boardRead.hasWorkedWith(f, account);
+        if (info.eligible) info.myVote = Number(await boardRead.freelancerRatingOf(f, account));
+      }
+      freelancerInfo[f.toLowerCase()] = info;
+    } catch (e) { /* decorative — ignore */ }
   }
   postings.reverse();
   renderStats();
@@ -289,11 +313,17 @@ function renderDetail() {
     if (isArbitrator && a.state === 6) {
       controls += `<button class="primary" data-resolve-pay="${a.id}">⚖️ Rule: pay freelancer</button> <button data-resolve-refund="${a.id}">⚖️ Rule: refund client</button>`;
     }
+    if (isClient && (a.state === 3 || a.state === 5)) {
+      const fi = freelancerInfo[(a.freelancer || "").toLowerCase()];
+      if (fi && fi.eligible) {
+        controls += `<span>Rate this freelancer:</span> <button data-frate="1" data-freelancer="${a.freelancer}" class="${fi.myVote === 1 ? "rate-on" : ""}">👍</button> <button data-frate="-1" data-freelancer="${a.freelancer}" class="${fi.myVote === -1 ? "rate-on" : ""}">👎</button>`;
+      }
+    }
     const disputeNote = a.state === 6
       ? `<div class="myapp-hint">⚖️ Dispute opened by ${same(a.disputeBy, p.client) ? "the client" : "the freelancer"} · ${fmtDate(a.disputedAt)} — frozen until the arbitrator rules.</div>`
       : "";
     return `<div class="assign-row">
-      <div><b>${short(a.freelancer)}</b> — ${A_STATES[a.state]}${a.proof ? ` · proof: ${escapeHtml(a.proof)}` : ""}${same(a.freelancer, account) ? " · (you)" : ""}${disputeNote}</div>
+      <div><b>${short(a.freelancer)}</b>${freelancerBadge(a.freelancer)} — ${A_STATES[a.state]}${a.proof ? ` · proof: ${escapeHtml(a.proof)}` : ""}${same(a.freelancer, account) ? " · (you)" : ""}${disputeNote}</div>
       <div class="assign-controls">${controls}</div>
     </div>`;
   }).join("");
@@ -341,6 +371,7 @@ function renderDetail() {
   document.querySelectorAll("[data-resolve-pay]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.resolveDispute(Number(b.dataset.resolvePay), true))));
   document.querySelectorAll("[data-resolve-refund]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.resolveDispute(Number(b.dataset.resolveRefund), false))));
   document.querySelectorAll("[data-rate]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.rateClient(p.client, b.dataset.rate === "1"))));
+  document.querySelectorAll("[data-frate]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.rateFreelancer(b.dataset.freelancer, b.dataset.frate === "1"))));
   document.querySelectorAll("[data-approve]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.approveApplication(Number(b.dataset.approve)))));
   document.querySelectorAll("[data-reject]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.rejectApplication(Number(b.dataset.reject)))));
   document.querySelectorAll("[data-release]").forEach(b => b.addEventListener("click", () => runTx(() => boardWrite.release(Number(b.dataset.release)))));
