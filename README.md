@@ -17,7 +17,7 @@ The front end is three pages: the **Job board** (index), **Post a job**
 (`post.html`) and **Payouts** (`payouts.html`), sharing one wallet session,
 theme and script.
 
-## The flow (current — JobBoardV4)
+## The flow (current — JobBoardV5)
 
 1. **Client posts a job** — title, requirements, pay per spot, number of
    spots, deadline — and the **full budget (pay × spots) is escrowed up
@@ -38,11 +38,13 @@ theme and script.
    against the job requirements and rules: release to the freelancer, or
    refund to the client. The client can also settle voluntarily at any
    time by releasing.
-8. **Client rating badge (V4):** a freelancer who has actually held a
+8. **Two-way rating badges (V4/V5):** a freelancer who has actually held a
    settled spot with a client (paid or refunded) can give that client a
-   **thumbs up or thumbs down** — one thumb per wallet, changeable. The
-   public counts ride on every job card as a badge next to the client, so
-   freelancers can judge a client **before** applying.
+   **thumbs up or thumbs down** — one thumb per wallet, changeable — and
+   the client can rate the freelancer back on the same terms. The public
+   counts ride as badges: the client's on every job card (judge **before**
+   applying), the freelancer's on their application rows (judge **before**
+   approving).
 
 ## Payout layer (getting earnings out)
 
@@ -113,7 +115,8 @@ on-chain.
 
 | Contract | Address |
 |---|---|
-| JobBoardV4 (current — board + disputes + client ratings) | `0xd0a22861122fcf221ab9c017457916ff9aa1a552` |
+| JobBoardV5 (current — board + disputes + two-way ratings) | `0xe6948d9554e2bF73400922cbEfa663406B29ee44` |
+| JobBoardV4 (board + disputes + client ratings) | `0xd0a22861122fcf221ab9c017457916ff9aa1a552` |
 | JobBoard (V3 — funded postings + spots) | `0x37c8e35fb6c8f2f5d2a70dde6e7252fafcc99c6b` |
 | FreelanceEscrowV2 (open job board) | `0x98ad3d72e7a92246606f91c078f5746758635b9f` |
 | FreelanceEscrow (V1 — direct hire only) | `0x07310bcba28550d429f1d7d779f47e049f468b0e` |
@@ -121,9 +124,9 @@ on-chain.
 
 - Network: QDay Aevum testnet, chain ID `44005`
 - RPC: `https://rpc-test.qday.info`
-- Explorer: https://explorer-test.qday.info/address/0xd0a22861122fcf221ab9c017457916ff9aa1a552
-- Deploy txs — V4: `0x54cb32fab51aa46ca195288ed90d7e4cd41bf5e0669b8fd6a925c2eb006ca0c7` · V3: `0x562a4693fe3ab3e3d2dbcd919ba235e1de7d1b111265b4ac733bb9b642bf670a` · V2: `0xdb06b55b88e3553d2d7cf3341d66c2a0fd3b9a9989c53a7f94d66389b1b6ae04` · V1: `0x9ece21c6ef28a27db8cb2ce71523120419dd467383984a590ca8ec9e746d4b56`
-- Source: **verified** on the explorer for all four versions
+- Explorer: https://explorer-test.qday.info/address/0xe6948d9554e2bF73400922cbEfa663406B29ee44
+- Deploy txs — V5: `0x83b085c2d66ebee9f18787013624047c84cdfd77832961e5b0a2a8b66a6dba00` · V4: `0x54cb32fab51aa46ca195288ed90d7e4cd41bf5e0669b8fd6a925c2eb006ca0c7` · V3: `0x562a4693fe3ab3e3d2dbcd919ba235e1de7d1b111265b4ac733bb9b642bf670a` · V2: `0xdb06b55b88e3553d2d7cf3341d66c2a0fd3b9a9989c53a7f94d66389b1b6ae04` · V1: `0x9ece21c6ef28a27db8cb2ce71523120419dd467383984a590ca8ec9e746d4b56`
+- Source: **verified** on the explorer for all five versions
 
 ## Live dispute run on V4 (27 Nov 2026)
 
@@ -188,7 +191,7 @@ Foundry project (Solidity 0.8.20):
 
 ```bash
 forge build
-forge test   # 49 tests: V1 spec checklist + V2 claim flow + V3 board flow + V4 disputes & ratings
+forge test   # 73 tests: V1 spec checklist + V2 claim flow + V3 board flow + V4 disputes & client ratings + V5 two-way ratings
 ```
 
 Test coverage: happy path end-to-end · cancel before funding · funded refund
@@ -214,8 +217,10 @@ terms rejected · deposit without token approval fails.
 - [x] V4 trust layer: dispute + arbitrator path (either side can dispute a
       delivered spot; pay freezes until the arbitrator rules) and public
       client rating badges (thumbs up/down from freelancers with a settled
-      spot) — 49/49 tests total, deployed + verified, live dispute run
-      completed
+      spot) — deployed + verified, live dispute run completed
+- [x] V5: two-way badges — clients rate freelancers on the same settled-spot
+      terms; the freelancer badge rides on application rows — 73/73 tests
+      total, deployed + verified, live cycle rated both ways
 - [ ] Payout options (after release): convert to other stablecoins, withdraw
       as crypto, or withdraw to local currency at a transparent quoted rate
       (bank settlement via a licensed partner in production; labelled as a
