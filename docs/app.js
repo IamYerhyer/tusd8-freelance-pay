@@ -364,14 +364,7 @@ async function refreshBalances() {
   $("#balances").textContent = `Balance: ${ethers.formatEther(native).slice(0, 8)} tQDAY · ${fmtAmt(t)} tUSD8`;
 }
 
-async function connect() {
-  if (!window.ethereum) {
-    $("#banner").textContent = "No wallet extension found. Install MetaMask or Rabby, add the QDay Aevum testnet (chain 44005, RPC " + RPC + "), then connect. You can still browse the board below without a wallet.";
-    $("#banner").classList.remove("hidden");
-    return;
-  }
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
+async function setupWallet(provider) {
   await ensureChain(provider);
   signer = await provider.getSigner();
   account = await signer.getAddress();
@@ -382,6 +375,31 @@ async function connect() {
   await refreshBalances();
   renderList();
   if (selectedId !== null) renderDetail();
+}
+
+async function connect() {
+  if (!window.ethereum) {
+    $("#banner").textContent = "No wallet extension found. Install MetaMask or Rabby, add the QDay Aevum testnet (chain 44005, RPC " + RPC + "), then connect. You can still browse the pages without a wallet.";
+    $("#banner").classList.remove("hidden");
+    return;
+  }
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send("eth_requestAccounts", []);
+  await setupWallet(provider);
+}
+
+// Each page is a separate document, so a fresh page load starts with no
+// signer — the wallet looked "disconnected" on every navigation. Silently
+// restore the session on load: eth_accounts returns the account only when
+// the wallet has already authorised this site, so this never pops a prompt.
+async function autoConnect() {
+  if (!window.ethereum) return;
+  try {
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (accounts && accounts.length) {
+      await setupWallet(new ethers.BrowserProvider(window.ethereum));
+    }
+  } catch (e) { /* stay disconnected; the Connect button still works */ }
 }
 
 // ---------- wiring ----------
@@ -467,6 +485,7 @@ if ($("#createForm")) $("#createForm").addEventListener("submit", async (e) => {
   }
 });
 if (window.ethereum) window.ethereum.on("accountsChanged", () => location.reload());
+autoConnect();
 loadAll()
   .then(() => { if ($("#jobList") && location.hash === "#myapps") activateMine(); })
   .catch(() => { const el = $("#jobList"); if (el) el.innerHTML = '<p class="muted">Could not reach the Aevum RPC — try Refresh in a moment.</p>'; });
