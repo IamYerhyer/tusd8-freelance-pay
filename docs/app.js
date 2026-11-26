@@ -35,7 +35,7 @@ const boardRead = new ethers.Contract(BOARD, BOARD_ABI, readProvider);
 const tokenRead = new ethers.Contract(TUSD8, ERC20_ABI, readProvider);
 
 let signer = null, account = null, boardWrite = null, tokenWrite = null;
-let postings = [], assignments = [], filter = "all", selectedId = null;
+let postings = [], assignments = [], filter = "all", selectedId = null, myFilter = "all";
 
 const $ = (s) => document.querySelector(s);
 const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
@@ -93,6 +93,7 @@ async function loadAll() {
   postings.reverse();
   renderStats();
   renderList();
+  renderMyApps();
   if (selectedId !== null) renderDetail();
 }
 
@@ -132,6 +133,60 @@ function renderList() {
       ${spotsBar(p)}
     </div>`).join("");
   el.querySelectorAll(".job-card").forEach(c => c.addEventListener("click", () => openDetail(Number(c.dataset.id))));
+}
+
+// ---------- my applications ----------
+const MY_FILTER_STATES = { all: null, pending: [0], approved: [1, 2], paid: [3], rejected: [4] };
+const MY_HINTS = {
+  0: "Waiting for the client's decision.",
+  1: "You hold a funded spot — open the job to deliver your work.",
+  2: "Delivered — waiting for the client to release your pay.",
+  3: "Paid out to your wallet. ✅",
+  4: "Not approved this time.",
+  5: "This spot was refunded to the client under the guard rules."
+};
+function renderMyApps() {
+  const el = $("#myAppsList");
+  if (!el) return;
+  const mine = myAssignments().slice().reverse(); // newest first
+  const counts = {};
+  for (const [key, states] of Object.entries(MY_FILTER_STATES)) {
+    counts[key] = states === null ? mine.length : mine.filter(a => states.includes(a.state)).length;
+  }
+  document.querySelectorAll("#myAppsFilters [data-mfilter]").forEach(b => {
+    const key = b.dataset.mfilter;
+    const label = key[0].toUpperCase() + key.slice(1);
+    b.textContent = mine.length ? `${label} (${counts[key]})` : label;
+    b.classList.toggle("active", myFilter === key);
+  });
+  if (!account) {
+    el.innerHTML = `<p class="muted">Connect your wallet to see the jobs you've applied for, grouped by the client's decision.</p>`;
+    return;
+  }
+  if (!mine.length) {
+    el.innerHTML = `<p class="muted">You haven't applied to any job yet — pick one from the board above and hit Apply for a spot.</p>`;
+    return;
+  }
+  const states = MY_FILTER_STATES[myFilter];
+  const list = states === null ? mine : mine.filter(a => states.includes(a.state));
+  if (!list.length) {
+    el.innerHTML = `<p class="muted">No ${myFilter} applications.</p>`;
+    return;
+  }
+  el.innerHTML = list.map(a => {
+    const p = postings.find(x => x.id === a.postingId);
+    if (!p) return "";
+    return `<div class="myapp-row">
+      <div class="myapp-main">
+        <div><b>${escapeHtml(p.title)}</b>${categoryBadge(p.description)} — <span class="amount">${fmtAmt(p.amountPerSpot)} tUSD8</span></div>
+        <div class="job-meta"><span>Applied ${fmtDate(a.appliedAt)}</span><span>Job deadline ${fmtDate(p.deadline)}</span></div>
+        <div class="myapp-hint">${MY_HINTS[a.state] || ""}</div>
+      </div>
+      <span class="status st-${a.state}">${A_STATES[a.state]}</span>
+      <button data-open="${p.id}">Open job</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => openDetail(Number(b.dataset.open))));
 }
 
 // ---------- detail ----------
@@ -291,6 +346,7 @@ async function connect() {
   $("#accountLabel").textContent = account;
   await refreshBalances();
   renderList();
+  renderMyApps();
   if (selectedId !== null) renderDetail();
 }
 
@@ -303,6 +359,10 @@ document.querySelectorAll(".filter[data-filter]").forEach(b => b.addEventListene
   b.classList.add("active");
   filter = b.dataset.filter;
   renderList();
+}));
+document.querySelectorAll("#myAppsFilters [data-mfilter]").forEach(b => b.addEventListener("click", () => {
+  myFilter = b.dataset.mfilter;
+  renderMyApps();
 }));
 $("#categorySelect").addEventListener("change", (e) => {
   $("#aiFields").classList.toggle("hidden", e.target.value !== "AI training & evaluation");
